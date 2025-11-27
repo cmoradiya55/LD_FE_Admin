@@ -3,20 +3,15 @@
 import { useState } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import Dashboard from './Dashboard';
-// import TenantsManagement from './TenantsManagement';
-// import LandlordsManagement from './LandlordsManagement';
-// import StaffManagement from './StaffManagement';
-import ProductManagement from './ProductManagement';
-import ProductDetailPage from './ProductDetailPage';
+import Dashboard from '../app/(authenticated)/dashboard/Dashboard';
 import AddProductPage from './AddProductPage';
-import NotificationScreen from './NotificationScreen';
-import ProfileScreen from './ProfileScreen';
-import ChangePasswordScreen from './ChangePasswordScreen';
-import UserComponent from './UserComponent';
-import CityComponent from './CityComponent';
-import InspectionCenterComponent from './InspectionCenterComponent';
-import CarComponent from './CarComponent';
+import NotificationScreen from '../app/(authenticated)/notifications/NotificationScreen';
+import ChangePasswordScreen from '../app/(authenticated)/settings/change-password/ChangePasswordScreen';
+import UserComponent from '../app/(authenticated)/users/UserComponent';
+import CityComponent from '../app/(authenticated)/city/CityComponent';
+import InspectionCenterComponent from '../app/(authenticated)/inspectionCenter/InspectionCenterComponent';
+import CarComponent from '../app/(authenticated)/car/CarComponent';
+import ProfileScreen from '@/app/(authenticated)/profile/ProfileScreen';
 
 // Mock product data
 const initialProducts = [
@@ -93,6 +88,7 @@ export default function AdminLayout({ onLogout, user }: AdminLayoutProps) {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
   const handleProfileClick = () => {
@@ -176,41 +172,6 @@ export default function AdminLayout({ onLogout, user }: AdminLayoutProps) {
         return <InspectionCenterComponent />;
       case 'car':
         return <CarComponent />;
-      // case 'tenants':
-      //   return <TenantsManagement />;
-      // case 'landlords':
-      //   return <LandlordsManagement />;
-      // case 'staff':
-      //   return <StaffManagement />;
-      case 'products':
-        return (
-          <ProductManagement 
-            onNavigate={handleNavigate}
-            products={products}
-            onUpdateProducts={setProducts}
-          />
-        );
-      case 'product-detail':
-        const selectedProduct = products.find(p => p.id === selectedProductId);
-        if (!selectedProduct) {
-          setCurrentPage('products');
-          return null;
-        }
-        return (
-          <ProductDetailPage
-            product={selectedProduct}
-            onNavigate={handleNavigate}
-            onUpdateProduct={handleUpdateProduct}
-            onDeleteProduct={handleDeleteProduct}
-          />
-        );
-      case 'add-product':
-        return (
-          <AddProductPage
-            onNavigate={handleNavigate}
-            onAddProduct={handleAddProduct}
-          />
-        );
       case 'notifications':
         return <NotificationScreen />;
       case 'profile':
@@ -231,6 +192,14 @@ export default function AdminLayout({ onLogout, user }: AdminLayoutProps) {
     }
   };
 
+  const handleMobileMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleMobileMenuClose = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar
@@ -239,6 +208,8 @@ export default function AdminLayout({ onLogout, user }: AdminLayoutProps) {
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogout={onLogout}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onCloseMobileMenu={handleMobileMenuClose}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -248,11 +219,12 @@ export default function AdminLayout({ onLogout, user }: AdminLayoutProps) {
           onLogout={onLogout}
           onProfileClick={handleProfileClick}
           onNotificationClick={() => handleNavigate('notifications')}
+          onMobileMenuClick={handleMobileMenuToggle}
           user={user}
           {...getBackButtonProps()}
         />
         
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-1.5 sm:p-2 md:p-3 lg:p-4">
           <div className="animate-in fade-in-0 slide-in-from-right-4 duration-500">
             {renderContent()}
           </div>

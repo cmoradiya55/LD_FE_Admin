@@ -1,4 +1,10 @@
-import UserComponent from '@/components/UserComponent';
+import type { Metadata } from 'next';
+import UserComponent from '@/app/(authenticated)/users/UserComponent';
+
+export const metadata: Metadata = {
+  title: 'Users',
+  description: 'Manage users, tenants, landlords, and staff members',
+};
 
 export default function UsersPage() {
   return <UserComponent />;

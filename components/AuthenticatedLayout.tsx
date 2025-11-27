@@ -13,6 +13,7 @@ interface AuthenticatedLayoutProps {
 
 export default function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { authState, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -59,9 +60,10 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     // if (pathname === '/users/tenants') return 'tenants';
     // if (pathname === '/users/landlords') return 'landlords';
     // if (pathname === '/users/staff') return 'staff';
-    if (pathname === '/users') return 'users'; // Default to tenants
+    if (pathname === '/users') return 'users';
     if (pathname === '/city') return 'city';
     if (pathname === '/inspectionCenter') return 'inspectionCenter';
+    if (pathname.startsWith('/car/')) return 'car'; // For car detail pages (e.g., /car/[slug])
     if (pathname === '/car') return 'car';
     if (pathname === '/products') return 'products';
     if (pathname.startsWith('/products/')) return 'products'; // For product detail pages
@@ -109,6 +111,14 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     return null;
   }
 
+  const handleMobileMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleMobileMenuClose = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar
@@ -117,6 +127,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogout={handleLogout}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onCloseMobileMenu={handleMobileMenuClose}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -126,11 +138,12 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           onLogout={handleLogout}
           onProfileClick={handleProfileClick}
           onNotificationClick={() => router.push('/notifications')}
+          onMobileMenuClick={handleMobileMenuToggle}
           user={authState.user}
           {...getBackButtonProps()}
         />
         
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-1.5 sm:p-2 md:p-3 lg:p-8">
           <div className="animate-in fade-in-0 slide-in-from-right-4 duration-500">
             {children}
           </div>

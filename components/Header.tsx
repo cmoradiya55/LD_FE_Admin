@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useFlags } from '@/components/FlagsProvider';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +34,7 @@ interface HeaderProps {
   showBackButton?: boolean;
   onBackClick?: () => void;
   backButtonLabel?: string;
+  onMobileMenuClick?: () => void;
   user?: {
     id: string;
     name: string;
@@ -50,14 +52,15 @@ export default function Header({
   showBackButton = false,
   onBackClick,
   backButtonLabel = "Back",
+  onMobileMenuClick,
   user 
 }: HeaderProps) {
   const [notifications] = useState(3);
   const { enableAdvancedAI } = useFlags();
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-      <div className="flex items-center justify-between">
+    <header className="bg-white border-b border-gray-200 shadow-sm h-16 sm:h-20 px-3 sm:px-5 flex items-center">
+      <div className="flex w-full items-center justify-between">
         {/* Left Section */}
         <div className="flex items-center space-x-4">
           {showBackButton && onBackClick ? (
@@ -71,14 +74,32 @@ export default function Header({
               <span className="hidden sm:inline">{backButtonLabel}</span>
             </Button>
           ) : (
+            <>
+
+            {/* Menu Button - visible on mobile/tablet only */}
             <Button
-              variant="ghost"
-              size="sm"
+                variant="ghost"
+                size="sm"
               onClick={onToggleSidebar}
               className="md:hidden p-2 hover:bg-gray-100"
-            >
+              >
               <Menu className="w-5 h-5" />
-            </Button>
+              </Button>
+
+              {/* Logo - visible on mobile/tablet */}
+              <div className="flex items-center space-x-1.5 sm:space-x-2 lg:hidden">
+                <Image
+                  src="/logo.webp"
+                  alt="Logo"
+                  width={80}
+                  height={80}
+                  className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain"
+                  priority
+                />
+                {/* <h1 className="text-sm sm:text-base font-bold text-gray-900">AdminPro</h1> */}
+              </div>
+              
+            </>
           )}
         </div>
 
