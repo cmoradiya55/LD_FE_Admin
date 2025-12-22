@@ -5,7 +5,7 @@ import { Sparkles, ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-rea
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import CarDetailCurve from './CarDetailCurve';
-import type { DetailOptionData, DetailOptionIcon } from '@/app/(authenticated)/car/data';
+import type { DetailOptionData, DetailOptionIcon } from '@/app/(admin)/car/data';
 
 interface FeaturedImageProps {
     src: string;

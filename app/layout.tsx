@@ -2,7 +2,9 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from '@/components/ui/toaster';
-import { FlagsProvider } from '@/components/FlagsProvider';
+import { FlagsProvider } from '@/components/providers/FlagsProvider';
+import { QueryProvider } from '@/components/providers/QueryProvider';
+import { AuthProvider } from '@/components/providers/AuthProvider';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -60,12 +62,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className={`${inter.className} antialiased`}>
-        <FlagsProvider>
-          <div id="root">
-            {children}
-          </div>
-        </FlagsProvider>
-        <Toaster />
+        <QueryProvider>
+          <AuthProvider>
+            <FlagsProvider>
+              <div id="root pb-10">
+                {children}
+              </div>
+            </FlagsProvider>
+            <Toaster />
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

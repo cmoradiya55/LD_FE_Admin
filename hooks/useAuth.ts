@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { sendOtp, verifyOtp } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: string;
+  roleId?: number;
+  phone?: string;
 }
 
 interface AuthState {
@@ -17,7 +21,8 @@ interface AuthState {
 
 interface AuthHook {
   authState: AuthState;
-  login: (userData: { email: string; password: string }) => Promise<void>;
+  sendOTP: (contact: string) => Promise<{ success: boolean; error?: string }>;
+  login: (contact: string, otp: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -28,6 +33,7 @@ export function useAuth(): AuthHook {
     user: null,
     isLoading: true
   });
+  const router = useRouter();
 
   // Check for existing session on mount
   useEffect(() => {
@@ -64,39 +70,150 @@ export function useAuth(): AuthHook {
     checkAuth();
   }, []);
 
-  const login = async (userData: { email: string; password: string }) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      name: userData.email.split('@')[0].replace(/[^a-zA-Z]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      email: userData.email,
-      role: 'Admin'
-    };
+  const sendOTP = async (contact: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // API expects countryCode (number) and mobileNo (number)
+      const countryCode = 91; // India country code
+      const mobileNo = parseInt(contact, 10);
+      
+      if (isNaN(mobileNo) || mobileNo <= 0) {
+        return {
+          success: false,
+          error: 'Invalid mobile number'
+        };
+      }
+      
+      const response = await sendOtp({ 
+        countryCode: countryCode,
+        mobileNo: mobileNo
+      });
+      
+      // Check if response indicates an error (has code field with error status or has errors array)
+      if (response?.code && response?.code >= 400) {
+        // Handle validation errors from API
+        const errorMessages = response?.errors?.map((err: any) => err.message).join(', ') || 
+                             response?.message || 
+                             response?.error || 
+                             'Failed to send OTP';
+        return { 
+          success: false, 
+          error: errorMessages
+        };
+      }
+      
+      // Check for success indicators
+      if (response?.success || response?.data || (response?.code && response?.code < 400) || !response?.code) {
+        return { success: true };
+      }
+      
+      // If we get here, response structure is unexpected
+      return { 
+        success: false, 
+        error: response?.message || response?.error || 'Failed to send OTP'
+      };
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 
+                          error?.response?.data?.error || 
+                          error?.message || 
+                          'Failed to send OTP';
+      return { 
+        success: false, 
+        error: errorMessage
+      };
+    }
+  };
 
-    setAuthState({
-      isAuthenticated: true,
-      user: mockUser,
-      isLoading: false
-    });
+  const login = async (contact: string, otp: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // API expects countryCode (number) and mobileNo (number)
+      const countryCode = 91; // India country code
+      const mobileNo = parseInt(contact, 10);
+      
+      if (isNaN(mobileNo) || mobileNo <= 0) {
+        return {
+          success: false,
+          error: 'Invalid mobile number'
+        };
+      }
+      
+      const response = await verifyOtp({ 
+        countryCode: countryCode,
+        mobileNo: mobileNo,
+        otp: otp
+      });
+      
+      if (response?.success || response?.data) {
+        const userData = response?.data?.user || response?.user || {
+          id: response?.data?.id || '1',
+          name: response?.data?.name || contact,
+          email: response?.data?.email || `${contact}@example.com`,
+          role: response?.data?.role || 'Admin',
+          phone: contact
+        };
 
-    // Save to localStorage for persistence
-    localStorage.setItem('adminpro-auth', JSON.stringify({
-      user: mockUser,
-      timestamp: Date.now()
-    }));
+        const user: User = {
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          phone: userData.phone || contact
+        };
+
+        setAuthState({
+          isAuthenticated: true,
+          user: user,
+          isLoading: false
+        });
+        console.log('Login Response:', response);
+        
+        // Save to localStorage for persistence
+        localStorage.setItem('adminpro-auth', JSON.stringify({
+          user: user,
+          token: response?.data?.accessToken,
+          timestamp: Date.now()
+        }));
+
+        return { success: true };
+      } else {
+        // Handle validation errors from API
+        const errorMessages = response?.errors?.map((err: any) => err.message).join(', ') || 
+                             response?.message || 
+                             response?.error || 
+                             'Invalid OTP';
+        return { 
+          success: false, 
+          error: errorMessages
+        };
+      }
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 
+                          error?.response?.data?.error || 
+                          error?.message || 
+                          'Invalid OTP';
+      return { 
+        success: false, 
+        error: errorMessage
+      };
+    }
   };
 
   const logout = () => {
+    // Clear saved session FIRST before any state changes or redirects
+    localStorage.removeItem('adminpro-auth');
+    localStorage.removeItem('adminpro-token');
+    
+    // Dispatch custom event to notify AuthProvider of logout
+    window.dispatchEvent(new CustomEvent('auth:logout'));
+    
+    // Update state
     setAuthState({
       isAuthenticated: false,
       user: null,
       isLoading: false
     });
-
-    // Clear saved session
-    localStorage.removeItem('adminpro-auth');
+    
+    // Redirect to login
+    router.push('/login');
   };
 
   const updateUser = (userData: Partial<User>) => {
@@ -122,6 +239,7 @@ export function useAuth(): AuthHook {
 
   return {
     authState,
+    sendOTP,
     login,
     logout,
     updateUser

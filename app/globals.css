@@ -6,6 +6,59 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+
+  --color-primary: #2563eb;
+  --color-primary-dark: #1e40af;
+  --color-primary-light: #3b82f6;
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+
+  --color-secondary: #0ea5e9;
+  --color-secondary-dark: #0284c7;
+  --color-secondary-light: #38bdf8;
+  --color-secondary-50: #f0f9ff;
+  --color-secondary-100: #e0f2fe;
+  --color-secondary-200: #bae6fd;
+
+  --color-accent: #6366f1;
+  --color-accent-soft: #ede9fe;
+
+  --color-background: #f9fafb;
+  --color-background-secondary: #ffffff;
+
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-secondary-strong: #475569;
+  --color-text-tertiary: #94a3b8;
+  --color-text-inverse: #ffffff;
+
+  --color-border: #e2e8f0;
+
+  --color-success: #10b981;
+  --color-success-soft: #d1fae5;
+  --color-success-border: #a7f3d0;
+  --color-success-dark: #047857;
+
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef3c7;
+  --color-warning-border: #fde68a;
+  --color-warning-dark: #b45309;
+
+  --color-error: #ef4444;
+  --color-error-soft: #fee2e2;
+  --color-error-border: #fecaca;
+  --color-error-dark: #b91c1c;
+
+  --color-gradient-from: #3b82f6;
+  --color-gradient-to: #1d4ed8;
+
+  --color-card-bg: #ffffff;
+  --color-hover-bg: #f1f5f9;
+  --color-info-soft: #dbeafe;
+
+  --background: var(--color-background);
+  --foreground: var(--color-text);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -13,6 +66,8 @@
     --foreground-rgb: 255, 255, 255;
     --background-start-rgb: 0, 0, 0;
     --background-end-rgb: 0, 0, 0;
+    --background: #0a0a0a;
+    --foreground: #ededed;
   }
 }
 
@@ -100,6 +155,18 @@
     --palette-blue-600: 37 99 235;
     --palette-blue-700: 29 78 216;
     --palette-blue-800: 30 64 175;
+    --palette-blue-900: 30 58 138;
+
+    --palette-primary-50: 239 246 255;
+    --palette-primary-100: 219 234 254;
+    --palette-primary-200: 191 219 254;
+    --palette-primary-300: 147 197 253;
+    --palette-primary-400: 96 165 250;
+    --palette-primary-500: 59 130 246;
+    --palette-primary-600: 37 99 235;
+    --palette-primary-700: 29 78 216;
+    --palette-primary-800: 30 64 175;
+    --palette-primary-900: 30 58 138;
 
     --palette-green-50: 240 253 244;
     --palette-green-100: 220 252 231;
@@ -191,21 +258,155 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground text-sm;
-  }
+
   html {
-    font-size: 14px;
+    font-size: 0.92rem;
   }
-  @media (min-width: 640px) {
-    html {
-      font-size: 14px;
-    }
+
+  body {
+    margin: 0;
+    background-color: #f5f7fd;
+    color: var(--foreground);
+    font-family: Arial, Helvetica, sans-serif;
+    min-height: 100vh;
+    line-height: 1.5;
   }
+
+  main {
+    background: #ffffff;
+    min-height: 100vh;
+    padding: 1.25rem;
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+  }
+
   @media (min-width: 1024px) {
     html {
-      font-size: 15px;
+      font-size: 0.98rem;
     }
+  }
+
+  /* Mobile-specific tweaks: larger base font size and tighter padding */
+  @media (max-width: 640px) {
+    html {
+      font-size: 1.05rem;
+    }
+
+    main {
+      padding: 0.75rem 0.5rem;
+    }
+
+    /* Global font size increases for mobile across entire website */
+    .text-xs {
+      font-size: 0.875rem !important;
+      line-height: 1.25rem;
+    }
+
+    .text-sm {
+      font-size: 1rem !important;
+      line-height: 1.5rem;
+    }
+
+    .text-base {
+      font-size: 1.125rem !important;
+      line-height: 1.75rem;
+    }
+
+    .text-lg {
+      font-size: 1.375rem !important;
+      line-height: 1.75rem;
+    }
+
+    .text-xl {
+      font-size: 1.5rem !important;
+      line-height: 2rem;
+    }
+
+    .text-2xl {
+      font-size: 1.75rem !important;
+      line-height: 2.25rem;
+    }
+
+    .text-3xl {
+      font-size: 2rem !important;
+      line-height: 2.5rem;
+    }
+
+    .text-4xl {
+      font-size: 2.5rem !important;
+      line-height: 3rem;
+    }
+
+    .text-5xl {
+      font-size: 3rem !important;
+      line-height: 3.5rem;
+    }
+
+    /* Car details page: keep existing adjustments if needed */
+    .car-details-page .text-xs {
+      font-size: 0.875rem;
+    }
+
+    .car-details-page .text-sm {
+      font-size: 1rem;
+    }
+
+    .car-details-page .text-base {
+      font-size: 1.125rem;
+    }
+
+    .car-details-page .text-lg {
+      font-size: 1.375rem;
+    }
+
+    .car-details-page .text-xl {
+      font-size: 1.5rem;
+    }
+
+    .car-details-page .text-2xl {
+      font-size: 1.75rem;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-[0_12px_35px_rgba(15,23,42,0.08)] border border-white p-6 transition-all duration-200;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .badge-pending {
+    @apply badge bg-yellow-100 text-yellow-800;
+  }
+  
+  .badge-live {
+    @apply badge bg-green-100 text-green-800;
+  }
+  
+  .badge-sold {
+    @apply badge bg-gray-100 text-gray-800;
+  }
+  
+  .badge-verified {
+    @apply badge bg-blue-100 text-blue-800;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-gray-800 placeholder:text-gray-400 transition-all duration-200 focus:border-[var(--color-primary-dark)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-200)] focus:ring-opacity-60;
+  }
+
+  .glass-card {
+    @apply rounded-3xl border border-white bg-white/85 text-slate-900 shadow-[0_10px_30px_rgba(15,23,42,0.1)] backdrop-blur-xl;
+  }
+
+  .pill {
+    @apply inline-flex items-center rounded-full border border-primary-100 bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-600;
   }
 }
 
@@ -258,5 +459,138 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  .text-primary {
+    color: var(--color-primary);
+  }
+
+  .text-secondary {
+    color: var(--color-secondary);
+  }
+
+  .text-accent {
+    color: var(--color-accent);
+  }
+
+  .text-muted {
+    color: var(--color-text-secondary);
+  }
+
+  .text-success {
+    color: var(--color-success);
+  }
+
+  .text-warning {
+    color: var(--color-warning);
+  }
+
+  .text-error {
+    color: var(--color-error);
+  }
+
+  .text-inverse {
+    color: var(--color-text-inverse);
+  }
+
+  .bg-base {
+    background-color: var(--color-background);
+  }
+
+  .bg-surface {
+    background-color: var(--color-card-bg);
+  }
+
+  .bg-muted {
+    background-color: var(--color-background-secondary);
+  }
+
+  .bg-primary {
+    background-color: var(--color-primary);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-secondary {
+    background-color: var(--color-secondary);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-accent {
+    background-color: var(--color-accent);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-success {
+    background-color: var(--color-success);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-warning {
+    background-color: var(--color-warning);
+    color: var(--color-background);
+  }
+
+  .bg-error {
+    background-color: var(--color-error);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-hover {
+    background-color: var(--color-hover-bg);
+  }
+
+  .text-gradient {
+    background-image: linear-gradient(
+      90deg,
+      var(--color-gradient-from),
+      var(--color-gradient-to)
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .bg-gradient-primary {
+    background-image: linear-gradient(
+      135deg,
+      var(--color-gradient-from),
+      var(--color-gradient-to)
+    );
+  }
+
+  .placeholder-muted::placeholder {
+    color: var(--color-text-secondary);
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 1px; 
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.25);
+    border-radius: 9999px;
+  }
+
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(59, 130, 246, 0.4);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

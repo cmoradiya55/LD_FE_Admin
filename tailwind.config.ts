@@ -3,6 +3,19 @@ import type { Config } from 'tailwindcss';
 const hslVar = (variable: string) => `hsl(var(${variable}) / <alpha-value>)`;
 const rgbVar = (variable: string) => `rgb(var(${variable}) / <alpha-value>)`;
 
+const primaryShades = {
+  50: rgbVar('--palette-primary-50'),
+  100: rgbVar('--palette-primary-100'),
+  200: rgbVar('--palette-primary-200'),
+  300: rgbVar('--palette-primary-300'),
+  400: rgbVar('--palette-primary-400'),
+  500: rgbVar('--palette-primary-500'),
+  600: rgbVar('--palette-primary-600'),
+  700: rgbVar('--palette-primary-700'),
+  800: rgbVar('--palette-primary-800'),
+  900: rgbVar('--palette-primary-900'),
+};
+
 const palette = {
   white: rgbVar('--palette-white'),
   black: rgbVar('--palette-black'),
@@ -31,6 +44,7 @@ const palette = {
     600: rgbVar('--palette-blue-600'),
     700: rgbVar('--palette-blue-700'),
     800: rgbVar('--palette-blue-800'),
+    900: rgbVar('--palette-blue-900'),
   },
   green: {
     50: rgbVar('--palette-green-50'),
@@ -103,6 +117,7 @@ const config: Config = {
         primary: {
           DEFAULT: hslVar('--primary'),
           foreground: hslVar('--primary-foreground'),
+          ...primaryShades,
         },
         secondary: {
           DEFAULT: hslVar('--secondary'),
