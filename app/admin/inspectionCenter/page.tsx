@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import React from 'react'
-import InspectionCenterComponent from '@/app/(admin)/inspectionCenter/InspectionCenterComponent';
+import InspectionCenterComponent from '@/app/admin/inspectionCenter/InspectionCenterComponent';
 
 export const metadata: Metadata = {
   title: 'Inspection Center',

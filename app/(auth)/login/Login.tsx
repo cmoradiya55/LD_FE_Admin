@@ -8,6 +8,7 @@ import { Button } from '@/components/Button/Button';
 import { useAuth } from '@/components/providers/AuthProvider';
 import PublicRoute from '@/components/Route/PublicRoute';
 import { LoadingSpinner } from '@/components/common';
+import { toast } from '@/hooks/use-toast';
 
 export default function Login() {
   const { sendOTP, login } = useAuth();

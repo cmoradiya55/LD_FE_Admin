@@ -28,24 +28,46 @@ interface SidebarProps {
   onLogout: () => void;
   isMobileMenuOpen?: boolean;
   onCloseMobileMenu?: () => void;
+  roleId?: number; // 1 = Admin, 2 = Manager, 3 = Inspector
 }
 
-const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'users',  label: 'Users',  icon: User },
+// Role-based menu configurations
+const adminMenuItems = [
+  { id: 'adminDashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'users', label: 'Users', icon: User },
   { id: 'staff', label: 'Staff', icon: Users },
   { id: 'inspectionCenter', label: 'Inspection Center', icon: BadgeCheck },
   { id: 'car', label: 'Car', icon: CarFront },
   { id: 'profile', label: 'Profile', icon: User },
-  { 
-    id: 'settings', 
-    label: 'Settings', 
-    icon: Settings,
-    subItems: [
-      { id: 'change-password', label: 'Change Password', icon: Key },
-    ]
-  },
 ];
+
+const managerMenuItems = [
+  { id: 'managerDashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'staff', label: 'Staff', icon: Users },
+  { id: 'inspectionCenter', label: 'Inspection Center', icon: BadgeCheck },
+  { id: 'car', label: 'Car', icon: CarFront },
+  { id: 'profile', label: 'Profile', icon: User },
+];
+
+const inspectorMenuItems = [
+  { id: 'inspectorDashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'car', label: 'Car', icon: CarFront },
+  { id: 'profile', label: 'Profile', icon: User },
+];
+
+// Get menu items based on role
+const getMenuItems = (roleId?: number) => {
+  switch (roleId) {
+    case 1: // Admin
+      return adminMenuItems;
+    case 2: // Manager
+      return managerMenuItems;
+    case 3: // Inspector
+      return inspectorMenuItems;
+    default:
+      return adminMenuItems; // Default to admin
+  }
+};
 
 export default function Sidebar({ 
   currentPage, 
@@ -54,7 +76,8 @@ export default function Sidebar({
   onToggleCollapse,
   onLogout,
   isMobileMenuOpen = false,
-  onCloseMobileMenu
+  onCloseMobileMenu,
+  roleId
 }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -70,6 +93,9 @@ export default function Sidebar({
   const popupRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const triggerRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // Get menu items based on role
+  const menuItems = useMemo(() => getMenuItems(roleId), [roleId]);
+
   // Memoize menu item lookups for better performance
   const menuItemMap = useMemo(() => {
     const map = new Map<string, typeof menuItems[0]>();
@@ -77,7 +103,7 @@ export default function Sidebar({
       map.set(item.id, item);
     });
     return map;
-  }, []);
+  }, [menuItems]);
 
   // Optimized toggle expanded function
   const toggleExpanded = useCallback((itemId: string) => {
@@ -145,9 +171,6 @@ export default function Sidebar({
       // Auto-expand parent items if any submenu item is active
       const newExpanded = new Set<string>();
       menuItems.forEach(item => {
-        if (item.subItems?.some(sub => sub.id === currentPage)) {
-          newExpanded.add(item.id);
-        }
       });
       setExpandedItems(newExpanded);
     }
@@ -178,7 +201,6 @@ export default function Sidebar({
   // Check if any submenu item is active for a parent (memoized)
   const isSubMenuActive = useCallback((parentId: string) => {
     const parent = menuItemMap.get(parentId);
-    return parent?.subItems?.some(sub => sub.id === currentPage) || false;
   }, [currentPage, menuItemMap]);
 
   // Handle page change and close mobile menu
@@ -191,17 +213,8 @@ export default function Sidebar({
 
   // Handle menu item click with improved logic
   const handleMenuItemClick = useCallback((item: typeof menuItems[0]) => {
-    const hasSubItems = item.subItems && item.subItems.length > 0;
-    
-    if (hasSubItems && collapsed) {
-      setActivePopup(prev => (prev === item.id ? null : item.id));
-      return;
-    } else if (hasSubItems && !collapsed) {
-      toggleExpanded(item.id);
-    } else {
-      handlePageChange(item.id);
-      setActivePopup(null);
-    }
+    handlePageChange(item.id);
+    setActivePopup(null);
   }, [collapsed, toggleExpanded, handlePageChange]);
 
   const handleSubItemClick = useCallback((subItemId: string) => {
@@ -313,10 +326,8 @@ export default function Sidebar({
           const Icon = item.icon;
           const isActive = currentPage === item.id;
           const isHovered = hoveredItem === item.id;
-          const hasSubItems = item.subItems && item.subItems.length > 0;
           const isExpanded = expandedItems.has(item.id);
           const isSubItemActive = isSubMenuActive(item.id);
-          const showPopup = collapsed && hasSubItems && activePopup === item.id;
 
           return (
             <div
@@ -337,20 +348,20 @@ export default function Sidebar({
                     // Expanded: only the truly active main item turns white (large screens only)
                     !collapsed && isActive && "lg:text-white text-blue-600 lg:bg-transparent",
                     // Collapsed: highlight if main or any of its subitems are active (large screens only)
-                    collapsed && (isActive || isSubItemActive) && "lg:bg-blue-600 lg:text-white lg:rounded-lg bg-blue-50 text-blue-600 rounded-md",
+                    collapsed && isActive && "lg:bg-blue-600 lg:text-white lg:rounded-lg bg-blue-50 text-blue-600 rounded-md",
                     // Default state
                     !collapsed && !isActive && "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
                   )}
                   onClick={() => {
                     handleMenuItemClick(item);
                     // Close mobile menu when clicking a menu item without subitems
-                    if (!item.subItems && onCloseMobileMenu) {
+                    if (onCloseMobileMenu) {
                       onCloseMobileMenu();
                     }
                   }}
                   onMouseEnter={() => handleMouseEnter(item.id)}
                   onMouseLeave={handleMouseLeave}
-                  aria-expanded={hasSubItems ? isExpanded : undefined}
+                  aria-expanded={isExpanded ? isExpanded : undefined}
                 >
                   <Icon className={cn(
                     "transition-all duration-200",
@@ -366,7 +377,7 @@ export default function Sidebar({
                       <span className="font-medium flex-1 text-left self-center">
                         {item.label}
                       </span>
-                      {hasSubItems && (
+                      {isExpanded && (
                         <div className="ml-2 transition-transform duration-200 flex items-center">
                           {isExpanded ? (
                             <ChevronUp className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -380,91 +391,70 @@ export default function Sidebar({
                 </Button>
 
                 {/* Tooltip for collapsed state */}
-                {collapsed && hasSubItems && isHovered && !showPopup && (
+                {collapsed && isExpanded && isHovered && (
                   <div className="absolute left-16 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-50 animate-in fade-in-0 duration-150">
                     Click to open menu
                   </div>
                 )}
 
                 {/* Popup for collapsed submenus */}
-                {showPopup && (
+                {isExpanded && (
                   <div
                     ref={(el) => {
                       popupRefs.current[item.id] = el;
                     }}
                     className="absolute left-16 top-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 w-48 py-2 space-y-1"
                   >
-                    {item.subItems?.map((subItem) => {
-                      const SubIcon = subItem.icon;
-                      const isSubActive = currentPage === subItem.id;
-
-                      return (
-                        <Button
-                          key={subItem.id}
-                          variant="ghost"
-                          className={cn(
-                            "w-full justify-start h-9 px-4 text-sm !bg-transparent",
-                            isSubActive
-                              ? "text-blue-600 font-semibold bg-blue-50"
-                              : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                          )}
-                          onClick={() => handleSubItemClick(subItem.id)}
-                        >
-                          <SubIcon
-                            className={cn(
-                              "w-4 h-4 mr-3",
-                              isSubActive ? "text-blue-600" : "text-gray-500"
-                            )}
-                          />
-                          <span className="font-medium">
-                            {subItem.label}
-                          </span>
-                        </Button>
-                      );
-                    })}
+                      <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start h-9 px-4 text-sm !bg-transparent",
+                        isActive ? "text-blue-600 font-semibold bg-blue-50" : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                      )}
+                      onClick={() => handleMenuItemClick(item)}
+                    >
+                      <Icon className={cn(
+                        "w-4 h-4 mr-3",
+                        isActive ? "text-blue-600" : "text-gray-500"
+                      )} />
+                      <span className="font-medium">
+                        {item.label}
+                      </span>
+                    </Button>
                   </div>
                 )}
               </div>
 
               {/* Sub Menu Items */}
-              {hasSubItems && !collapsed && isExpanded && (
+              {!collapsed && isExpanded && (
                 <div className="submenu-container ml-4 sm:ml-6 mt-1 space-y-1 animate-in slide-in-from-top-2 fade-in-0 duration-200">
-                  {item.subItems?.map((subItem) => {
-                    const SubIcon = subItem.icon;
-                    const isSubActive = currentPage === subItem.id;
-                    const isSubHovered = hoveredItem === subItem.id;
-
-                    return (
-                      <Button
-                        key={subItem.id}
-                        variant="ghost"
-                        data-menu-id={subItem.id}
+                  <Button
+                    variant="ghost"
+                    data-menu-id={item.id}
                         className={cn(
                           "w-full justify-start h-8 sm:h-9 transition-all duration-200 relative z-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm group !bg-transparent",
-                          isSubActive
+                          isActive
                             ? "lg:text-white text-blue-600 font-semibold lg:bg-transparent bg-blue-50"
                             : "text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
                         )}
                         onClick={() => {
-                          handlePageChange(subItem.id);
+                          handlePageChange(item.id);
                           if (onCloseMobileMenu) {
                             onCloseMobileMenu();
                           }
                         }}
-                        onMouseEnter={() => handleMouseEnter(subItem.id)}
+                        onMouseEnter={() => handleMouseEnter(item.id)}
                         onMouseLeave={handleMouseLeave}
                       >
-                        <SubIcon className={cn(
+                        <Icon className={cn(
                           "w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2 sm:mr-3 transition-all duration-200",
-                          isSubActive ? "lg:text-white text-blue-600" : "text-gray-500 group-hover:text-gray-700",
-                          isSubHovered && !isSubActive && "scale-110"
+                          isActive ? "lg:text-white text-blue-600" : "text-gray-500 group-hover:text-gray-700",
+                          isHovered && !isActive && "scale-110"
                         )} />
                         <span className="font-medium">
-                          {subItem.label}
+                          {item.label}
                         </span>
                       </Button>
-                    );
-                  })}
                 </div>
               )}
             </div>

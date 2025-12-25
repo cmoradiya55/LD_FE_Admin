@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/Button/Button';
 import TextInput from '@/components/FormComponent/TextInput';
+import SelectInput from '@/components/FormComponent/SelectInput';
 import MobileInput from '@/components/FormComponent/MobileInput';
 import {
     Building2,
@@ -16,16 +17,17 @@ import {
     X,
     Users,
     ArrowRight,
+    Search,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { getInspectionCentersData, putUpdateInspectionCenter, getCreateUser } from '@/lib/auth';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getInspectionCentersData, putUpdateInspectionCenter, createUser, getCitySuggestions, getInspectorByManager } from '@/lib/auth';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 type Manager = {
     id: number;
     name: string;
     phone: string;
-    email: string;
     isPrimary?: boolean;
     inspectorCount?: number;
     imageUrl?: string;
@@ -39,7 +41,10 @@ type InspectionCenter = {
     addressLine?: string;
     landmark?: string;
     pincode?: string;
+    pincodeId?: string;
+    pincodeDisplay?: string;
     manager?: Manager | null;
+    inspectionCentreId?: number | null;
 };
 
 type AddressFormValues = {
@@ -50,7 +55,6 @@ type AddressFormValues = {
 
 type ManagerFormValues = {
     fullName: string;
-    email: string;
     mobile: string;
 };
 
@@ -60,7 +64,6 @@ type ApiManager = {
     name: string;
     countryCode: number;
     mobileNumber: number;
-    email: string | null;
     isActive: boolean;
 };
 
@@ -101,7 +104,8 @@ const useInspectionCentersData = () => {
                 return [];
             } catch (error) {
                 console.error("Error fetching inspection centers data:", error);
-                throw error;
+                toast.error("Error fetching inspection centers data");
+                return [];
             }
         },
         retry: false,
@@ -110,37 +114,40 @@ const useInspectionCentersData = () => {
     });
 };
 
+type PincodeOption = { value: string; label: string };
+
+const useCitySuggestions = (query: string, cityId: number | null) => {
+    return useQuery<PincodeOption[]>({
+        queryKey: ['GET_CITY_SUGGESTIONS', cityId, query],
+        enabled: !!cityId && !!query && query.trim().length >= 2,
+        queryFn: async () => {
+            const response = await getCitySuggestions({
+                q: query,
+                page: 1,
+                limit: 20,
+                cityId,
+            });
+            console.log('response', response);
+
+            const mapped = response.data.map((item: any) => {
+                return {
+                    value: item.pincode_id,
+                    label: item.formatted,
+                };
+            });
+
+            return mapped as PincodeOption[];
+        },
+    });
+};
+
+
+
 const InspectionCenterComponent = () => {
     const router = useRouter();
-    const queryClient = useQueryClient();
     const { data: inspectionCentersData, isLoading, isError } = useInspectionCentersData();
-    
-    // Mutation for updating inspection center address
-    const updateInspectionCenterMutation = useMutation({
-        mutationFn: putUpdateInspectionCenter,
-        onSuccess: (response) => {
-            console.log('Update successful:', response);
-            // Invalidate and refetch inspection centers data
-            queryClient.invalidateQueries({ queryKey: ['GET_INSPECTION_CENTERS_DATA'] });
-        },
-        onError: (error) => {
-            console.error('Update failed:', error);
-        },
-    });
+    const { refetch: refetchInspectionCentersData } = useInspectionCentersData();
 
-    // Mutation for creating user/manager
-    const createUserMutation = useMutation({
-        mutationFn: getCreateUser,
-        onSuccess: (response) => {
-            console.log('Create user successful:', response);
-            // Invalidate and refetch inspection centers data
-            queryClient.invalidateQueries({ queryKey: ['GET_INSPECTION_CENTERS_DATA'] });
-        },
-        onError: (error) => {
-            console.error('Create user failed:', error);
-        },
-    });
-    
     // Transform API data to component format
     const transformedCenters: InspectionCenter[] = useMemo(() => {
         if (!inspectionCentersData || !Array.isArray(inspectionCentersData) || inspectionCentersData.length === 0) {
@@ -148,12 +155,11 @@ const InspectionCenterComponent = () => {
         }
 
         return inspectionCentersData.map((item: ApiInspectionCenterData) => {
-            const manager = item.managers && item.managers.length > 0 
+            const manager = item.managers && item.managers.length > 0
                 ? {
                     id: item.managers[0].id,
                     name: item.managers[0].name,
                     phone: `+${item.managers[0].countryCode} ${item.managers[0].mobileNumber}`,
-                    email: item.managers[0].email || '',
                     isPrimary: true,
                 }
                 : null;
@@ -166,17 +172,25 @@ const InspectionCenterComponent = () => {
                 addressLine: item.inspectionCentre?.address || '',
                 landmark: item.inspectionCentre?.landmark || '',
                 pincode: item.inspectionCentre?.pincode || '',
+                pincodeId: undefined,
+                pincodeDisplay: item.inspectionCentre?.pincode || '',
                 manager: manager,
+                inspectionCentreId: item.inspectionCentre?.id || null,
             };
         });
     }, [inspectionCentersData]);
 
     const [centers, setCenters] = useState<InspectionCenter[]>([]);
     const [selectedCenterId, setSelectedCenterId] = useState<number | null>(null);
+    const [selectedCityName, setSelectedCityName] = useState<string | null>(null);
     const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
     const [isEditingAddress, setIsEditingAddress] = useState(false);
     const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
     const [isEditingManager, setIsEditingManager] = useState(false);
+
+    // Local state for pincode search input & dropdown visibility
+    const [pincodeSearch, setPincodeSearch] = useState('');
+    const [showPincodeSuggestions, setShowPincodeSuggestions] = useState(false);
 
     // Update centers when API data changes - ensure city data from API is used
     useEffect(() => {
@@ -193,6 +207,7 @@ const InspectionCenterComponent = () => {
         }
     }, [transformedCenters, selectedCenterId, isLoading]);
 
+
     const selectedCenter =
         centers.find((center) => center.id === selectedCenterId) ?? centers[0];
 
@@ -200,10 +215,35 @@ const InspectionCenterComponent = () => {
         !!selectedCenter?.addressLine && selectedCenter.addressLine.trim().length > 0;
     const hasManager = !!selectedCenter?.manager;
 
+    // Fetch inspectors for the selected manager
+    const { data: inspectorsData } = useQuery({
+        queryKey: ['GET_INSPECTORS_BY_MANAGER', selectedCenter?.manager?.id],
+        queryFn: async () => {
+            if (!selectedCenter?.manager?.id) return [];
+            try {
+                const response = await getInspectorByManager(String(selectedCenter.manager.id));
+                if (response?.code === 200 && response?.data) {
+                    return response.data;
+                }
+                return [];
+            } catch (error) {
+                console.error("Error fetching inspectors:", error);
+                toast.error("Error fetching inspectors");
+                return [];
+            }
+        },
+        enabled: !!selectedCenter?.manager?.id,
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
+
+    const inspectorCount = inspectorsData?.length ?? 0;
+
     const {
         control: addressControl,
         handleSubmit: handleAddressSubmit,
         reset: resetAddressForm,
+        watch: watchAddressForm,
         formState: { errors: addressErrors },
     } = useForm<AddressFormValues>({
         defaultValues: {
@@ -214,6 +254,11 @@ const InspectionCenterComponent = () => {
     });
 
     const {
+        data: pincodeOptions = [],
+        isLoading: isPincodeLoading,
+    } = useCitySuggestions(pincodeSearch, selectedCenterId);
+
+    const {
         control: managerControl,
         handleSubmit: handleManagerSubmit,
         reset: resetManagerForm,
@@ -221,7 +266,6 @@ const InspectionCenterComponent = () => {
     } = useForm<ManagerFormValues>({
         defaultValues: {
             fullName: '',
-            email: '',
             mobile: '',
         },
     });
@@ -238,107 +282,86 @@ const InspectionCenterComponent = () => {
             landmark: '',
             pincode: '',
         });
+        setPincodeSearch('');
+        setShowPincodeSuggestions(false);
         setIsAddressModalOpen(true);
     };
 
     const onSubmitAddress = async (data: AddressFormValues) => {
-        if (!selectedCenterId) {
+        if (!selectedCenterId || !selectedCenter?.inspectionCentreId) {
             setIsAddressModalOpen(false);
             return;
         }
 
-        // Prepare payload for API
-        // Note: id is used in the URL path, cityId and pincodeId are in the request body
         const payload = {
-            id: selectedCenterId, // Used in URL: /admin/inspection-centre/${id}
+            id: selectedCenter.inspectionCentreId,
             address: data.addressLine,
             landmark: data.landmark,
-            cityId: selectedCenterId, // City ID for the request body
-            pincodeId: parseInt(data.pincode, 10), // Convert pincode string to number ID
+            cityId: selectedCenterId,
+            pincodeId: parseInt(data.pincode, 10),
         };
 
         try {
-            // Call the API mutation
-            await updateInspectionCenterMutation.mutateAsync(payload);
-            
-            // Update local state optimistically
-            setCenters((prev) =>
-                prev.map((center) =>
-                    center.id === selectedCenterId
-                        ? {
-                            ...center,
-                            addressLine: data.addressLine,
-                            landmark: data.landmark,
-                            pincode: data.pincode,
-                        }
-                        : center,
-                ),
-            );
+            const response = await putUpdateInspectionCenter(payload);
+            if (response?.code === 200) {
+                await refetchInspectionCentersData();
+                toast.success("Address updated successfully");
+                setIsAddressModalOpen(false);
+            }
 
-            setIsAddressModalOpen(false);
         } catch (error) {
             console.error('Failed to update address:', error);
-            // Error handling - you might want to show a toast notification here
+            toast.error("Failed to update address");
         }
     };
 
-    const handleAddManager = async () => {
+    const handleAddManager = () => {
         if (!selectedCenterId) {
             console.error('No inspection center selected');
             return;
         }
 
-        // Prepare payload for API
-        const payload = {
-            roleId: 2,
-            name: "Vaidik bhanderi",
-            countryCode: 91,
-            mobileNo: 9541263261,
-            inspectionCentreId: selectedCenterId,
-        };
-
-        try {
-            await createUserMutation.mutateAsync(payload);
-            // Open in "create" mode with empty fields after successful API call
-            setIsEditingManager(false);
-            resetManagerForm({
-                fullName: '',
-                email: '',
-                mobile: '',
-            });
-            setIsManagerModalOpen(true);
-        } catch (error) {
-            console.error('Failed to create user:', error);
-            // Optionally show error message to user
-        }
+        setIsEditingManager(false);
+        resetManagerForm({
+            fullName: '',
+            mobile: '',
+        });
+        setIsManagerModalOpen(true);
     };
 
-    const onSubmitManager = (data: ManagerFormValues) => {
-        if (!selectedCenterId) {
+    const onSubmitManager = async (data: ManagerFormValues) => {
+        if (!selectedCenterId || !selectedCenter?.inspectionCentreId) {
             setIsManagerModalOpen(false);
             return;
         }
 
-        setCenters((prev) =>
-            prev.map((center) => {
-                if (center.id !== selectedCenterId) return center;
+        const payload = {
+            roleId: 2,
+            name: data.fullName,
+            countryCode: 91,
+            mobileNo: Number(data.mobile),
+            inspectionCentreId: selectedCenter.inspectionCentreId,
+        };
 
-                const existing = center.manager;
-                return {
-                    ...center,
-                    manager: {
-                        id: existing?.id ?? Date.now(),
-                        name: data.fullName,
-                        // Store just mobile or with +91; using mobile as entered
-                        phone: data.mobile,
-                        email: data.email,
-                        isPrimary: existing?.isPrimary ?? true,
-                    },
-                };
-            }),
-        );
+        try {
+            const response = await createUser(payload);
+            console.log('Response:', response);
 
-        setIsManagerModalOpen(false);
+            if (response?.code === 200) {
+                await refetchInspectionCentersData();
+                toast.success("Manager created successfully");
+            }
+
+            setIsManagerModalOpen(false);
+            setIsEditingManager(false);
+            resetManagerForm({
+                fullName: '',
+                mobile: '',
+            });
+        } catch (error) {
+            console.error('Failed to create user:', error);
+            toast.error("Failed to create user");
+        }
     };
 
     return (
@@ -405,7 +428,7 @@ const InspectionCenterComponent = () => {
                                 <button
                                     key={center.id}
                                     type="button"
-                                    onClick={() => setSelectedCenterId(center.id)}
+                                    onClick={() => { setSelectedCenterId(center.id); setSelectedCityName(center.city) }}
                                     className={`group flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition-colors sm:px-5 sm:py-3.5 ${isActive
                                         ? 'bg-blue-50/80'
                                         : 'hover:bg-gray-50'
@@ -470,8 +493,14 @@ const InspectionCenterComponent = () => {
                                                 resetAddressForm({
                                                     addressLine: selectedCenter.addressLine || '',
                                                     landmark: selectedCenter.landmark || '',
-                                                    pincode: selectedCenter.pincode || '',
+                                                    pincode: selectedCenter.pincodeId || selectedCenter.pincode || '',
                                                 });
+                                                setPincodeSearch(
+                                                    selectedCenter.pincodeDisplay ||
+                                                    selectedCenter.pincode ||
+                                                    '',
+                                                );
+                                                setShowPincodeSuggestions(false);
                                                 setIsAddressModalOpen(true);
                                             }}
                                         >
@@ -553,7 +582,6 @@ const InspectionCenterComponent = () => {
                                                 setIsEditingManager(true);
                                                 resetManagerForm({
                                                     fullName: selectedCenter.manager.name || '',
-                                                    email: selectedCenter.manager.email || '',
                                                     mobile: selectedCenter.manager.phone || '',
                                                 });
                                                 setIsManagerModalOpen(true);
@@ -568,10 +596,9 @@ const InspectionCenterComponent = () => {
                                             size="sm"
                                             className="rounded-full px-3 text-[11px]"
                                             onClick={handleAddManager}
-                                            disabled={createUserMutation.isPending}
                                         >
                                             <UserCircle2 className="mr-1.5 h-3 w-3" />
-                                            {createUserMutation.isPending ? 'Creating...' : 'Add Manager'}
+                                            Add Manager
                                         </Button>
                                     )}
                                 </div>
@@ -617,10 +644,6 @@ const InspectionCenterComponent = () => {
                                                     <Phone className="h-3 w-3 text-gray-400" />
                                                     <span>{selectedCenter.manager.phone}</span>
                                                 </span>
-                                                <span className="inline-flex items-center gap-1">
-                                                    <Mail className="h-3 w-3 text-gray-400" />
-                                                    <span>{selectedCenter.manager.email}</span>
-                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -647,9 +670,9 @@ const InspectionCenterComponent = () => {
                                                         Inspector Team
                                                     </p>
                                                     <p className="text-[11px] text-gray-500">
-                                                        {selectedCenter.manager.inspectorCount ?? 0}{' '}
+                                                        {inspectorCount}{' '}
                                                         inspector
-                                                        {(selectedCenter.manager.inspectorCount ?? 0) !== 1
+                                                        {inspectorCount !== 1
                                                             ? 's'
                                                             : ''}{' '}
                                                         assigned
@@ -719,23 +742,99 @@ const InspectionCenterComponent = () => {
                                 inputClassName="px-3 py-2 text-sm"
                             />
 
-                            <TextInput
-                                name="pincode"
-                                control={addressControl}
-                                label="Pincode"
-                                placeholder="Enter pincode"
-                                type="text"
-                                required
-                                error={addressErrors.pincode}
-                                inputClassName="px-3 py-2 text-sm"
-                                rules={{
-                                    required: 'Pincode is required',
-                                    pattern: {
-                                        value: /^[0-9]{6}$/,
-                                        message: 'Enter a valid 6-digit pincode',
-                                    },
-                                }}
-                            />
+                            <div className="space-y-2">
+                                <label className="block text-sm font-semibold text-blue-700">
+                                    Pincode <span className="text-red-500">*</span>
+                                </label>
+                                <Controller
+                                    name="pincode"
+                                    control={addressControl}
+                                    rules={{
+                                        required: 'Pincode is required',
+                                    }}
+                                    render={({ field }) => (
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={pincodeSearch}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    setPincodeSearch(value);
+                                                    setShowPincodeSuggestions(true);
+                                                    // Clear selected value in form until user picks one
+                                                    field.onChange('');
+                                                }}
+                                                onFocus={() => {
+                                                    if (pincodeOptions.length > 0) {
+                                                        setShowPincodeSuggestions(true);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    // Delay hiding suggestions to allow click events
+                                                    setTimeout(
+                                                        () => setShowPincodeSuggestions(false),
+                                                        200,
+                                                    );
+                                                }}
+                                                placeholder={
+                                                    isPincodeLoading
+                                                        ? 'Loading pincodes...'
+                                                        : 'Start typing pincode, city or area'
+                                                }
+                                                className={`w-full rounded-lg border px-3 py-2 text-sm placeholder:text-gray-400 text-gray-900 focus:outline-none focus:ring-2 ${addressErrors.pincode
+                                                    ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-100'
+                                                    : 'border-gray-200 bg-slate-50 focus:border-primary focus:ring-primary/20 focus:bg-white'
+                                                    }`}
+                                            />
+
+                                            {showPincodeSuggestions &&
+                                                pincodeSearch.trim().length >= 2 && (
+                                                    <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                                                        {isPincodeLoading &&
+                                                            pincodeOptions.length === 0 ? (
+                                                            <div className="p-3 text-center text-xs text-slate-500">
+                                                                Loading suggestions...
+                                                            </div>
+                                                        ) : pincodeOptions.length > 0 ? (
+                                                            <div className="py-1">
+                                                                {pincodeOptions.map((option: { value: string | number; label: string }) => (
+                                                                    <button
+                                                                        key={option.value}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            field.onChange(
+                                                                                String(option.value),
+                                                                            );
+                                                                            setPincodeSearch(
+                                                                                option.label,
+                                                                            );
+                                                                            setShowPincodeSuggestions(
+                                                                                false,
+                                                                            );
+                                                                        }}
+                                                                        className="block w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-primary-50 hover:text-primary"
+                                                                    >
+                                                                        {option.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="p-3 text-center text-xs text-slate-500">
+                                                                No pincodes found. Try a different search
+                                                                term.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                        </div>
+                                    )}
+                                />
+                                {addressErrors.pincode && (
+                                    <p className="mt-1 flex items-center gap-1.5 text-xs text-red-500">
+                                        {addressErrors.pincode.message}
+                                    </p>
+                                )}
+                            </div>
 
                             <div className="flex justify-end gap-2 pt-1">
                                 <Button
@@ -751,13 +850,10 @@ const InspectionCenterComponent = () => {
                                     type="submit"
                                     size="sm"
                                     className="rounded-full px-4 text-[11px]"
-                                    disabled={updateInspectionCenterMutation.isPending}
                                 >
-                                    {updateInspectionCenterMutation.isPending 
-                                        ? 'Updating...' 
-                                        : isEditingAddress 
-                                            ? 'Update Address' 
-                                            : 'Save Address'}
+                                    {isEditingAddress
+                                        ? 'Update Address'
+                                        : 'Save Address'}
                                 </Button>
                             </div>
                         </form>
@@ -807,17 +903,6 @@ const InspectionCenterComponent = () => {
                                 label="Mobile Number"
                                 required
                                 error={managerErrors.mobile}
-                                inputClassName="px-3 py-2 text-sm"
-                            />
-
-                            <TextInput
-                                name="email"
-                                control={managerControl}
-                                label="Email"
-                                type="email"
-                                placeholder="name@example.com"
-                                required
-                                error={managerErrors.email}
                                 inputClassName="px-3 py-2 text-sm"
                             />
 

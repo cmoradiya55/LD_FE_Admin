@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { sendOtp, verifyOtp } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface User {
   id: string;
@@ -42,11 +43,11 @@ export function useAuth(): AuthHook {
         const savedAuth = localStorage.getItem('adminpro-auth');
         if (savedAuth) {
           const parsedAuth = JSON.parse(savedAuth);
-          
+
           // Check if session is not expired (24 hours)
           const sessionAge = Date.now() - parsedAuth.timestamp;
           const sessionExpiry = 24 * 60 * 60 * 1000; // 24 hours in ms
-          
+
           if (sessionAge < sessionExpiry) {
             setAuthState({
               isAuthenticated: true,
@@ -63,7 +64,7 @@ export function useAuth(): AuthHook {
         console.error('Error parsing saved auth:', error);
         localStorage.removeItem('adminpro-auth');
       }
-      
+
       setAuthState(prev => ({ ...prev, isLoading: false }));
     };
 
@@ -75,49 +76,49 @@ export function useAuth(): AuthHook {
       // API expects countryCode (number) and mobileNo (number)
       const countryCode = 91; // India country code
       const mobileNo = parseInt(contact, 10);
-      
+
       if (isNaN(mobileNo) || mobileNo <= 0) {
+        toast.error('Invalid mobile number');
         return {
           success: false,
           error: 'Invalid mobile number'
         };
       }
-      
-      const response = await sendOtp({ 
+
+      const response = await sendOtp({
         countryCode: countryCode,
         mobileNo: mobileNo
       });
-      
-      // Check if response indicates an error (has code field with error status or has errors array)
+
       if (response?.code && response?.code >= 400) {
-        // Handle validation errors from API
-        const errorMessages = response?.errors?.map((err: any) => err.message).join(', ') || 
-                             response?.message || 
-                             response?.error || 
-                             'Failed to send OTP';
-        return { 
-          success: false, 
+        const errorMessages = response?.errors?.map((err: any) => err.message).join(', ') ||
+          response?.message ||
+          response?.error ||
+          'Failed to send OTP';
+        toast.error(errorMessages || 'Failed to send OTP');
+        return {
+          success: false,
           error: errorMessages
         };
       }
-      
+
       // Check for success indicators
       if (response?.success || response?.data || (response?.code && response?.code < 400) || !response?.code) {
         return { success: true };
       }
-      
+
       // If we get here, response structure is unexpected
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: response?.message || response?.error || 'Failed to send OTP'
       };
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || 
-                          error?.response?.data?.error || 
-                          error?.message || 
-                          'Failed to send OTP';
-      return { 
-        success: false, 
+      const errorMessage = error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        'Failed to send OTP';
+      return {
+        success: false,
         error: errorMessage
       };
     }
@@ -128,20 +129,21 @@ export function useAuth(): AuthHook {
       // API expects countryCode (number) and mobileNo (number)
       const countryCode = 91; // India country code
       const mobileNo = parseInt(contact, 10);
-      
+
       if (isNaN(mobileNo) || mobileNo <= 0) {
+        toast.error('Invalid mobile number');
         return {
           success: false,
           error: 'Invalid mobile number'
         };
       }
-      
-      const response = await verifyOtp({ 
+
+      const response = await verifyOtp({
         countryCode: countryCode,
         mobileNo: mobileNo,
         otp: otp
       });
-      
+
       if (response?.success || response?.data) {
         const userData = response?.data?.user || response?.user || {
           id: response?.data?.id || '1',
@@ -165,7 +167,7 @@ export function useAuth(): AuthHook {
           isLoading: false
         });
         console.log('Login Response:', response);
-        
+
         // Save to localStorage for persistence
         localStorage.setItem('adminpro-auth', JSON.stringify({
           user: user,
@@ -176,22 +178,24 @@ export function useAuth(): AuthHook {
         return { success: true };
       } else {
         // Handle validation errors from API
-        const errorMessages = response?.errors?.map((err: any) => err.message).join(', ') || 
-                             response?.message || 
-                             response?.error || 
-                             'Invalid OTP';
-        return { 
-          success: false, 
+        const errorMessages = response?.errors?.map((err: any) => err.message).join(', ') ||
+          response?.message ||
+          response?.error ||
+          'Invalid OTP';
+        toast.error(errorMessages || 'Invalid OTP');
+        return {
+          success: false,
           error: errorMessages
         };
       }
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || 
-                          error?.response?.data?.error || 
-                          error?.message || 
-                          'Invalid OTP';
-      return { 
-        success: false, 
+      const errorMessage = error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        'Invalid OTP';
+      toast.error(errorMessage || 'Invalid OTP');
+      return {
+        success: false,
         error: errorMessage
       };
     }
@@ -201,17 +205,17 @@ export function useAuth(): AuthHook {
     // Clear saved session FIRST before any state changes or redirects
     localStorage.removeItem('adminpro-auth');
     localStorage.removeItem('adminpro-token');
-    
+
     // Dispatch custom event to notify AuthProvider of logout
     window.dispatchEvent(new CustomEvent('auth:logout'));
-    
+
     // Update state
     setAuthState({
       isAuthenticated: false,
       user: null,
       isLoading: false
     });
-    
+
     // Redirect to login
     router.push('/login');
   };
@@ -220,7 +224,7 @@ export function useAuth(): AuthHook {
     if (!authState.user) return;
 
     const updatedUser = { ...authState.user, ...userData };
-    
+
     setAuthState(prev => ({
       ...prev,
       user: updatedUser

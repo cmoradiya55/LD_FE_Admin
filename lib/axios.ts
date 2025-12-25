@@ -6,11 +6,15 @@ import axios, {
 import { getToken, clearAuthData } from '@/lib/storage';
 
 const createAxiosInstance = (baseURL: string): AxiosInstance => {
+  console.log("=== createAxiosInstance called ===");
+  console.log("baseURL parameter-----", baseURL);
+  console.log("Environment:", typeof window !== 'undefined' ? 'CLIENT' : 'SERVER');
   const instance = axios.create({
     baseURL,
     timeout: 50000,
     headers: {
       'Content-Type': 'application/json',
+      'WithCredentials': 'true',
     },
   });
 
@@ -101,13 +105,11 @@ const createAxiosInstance = (baseURL: string): AxiosInstance => {
   return instance;
 };
 
-const baseURL = process.env.NEXT_BACKEND_BASE_URL || 'http://localhost:8000/api/v1';
+const baseURL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
-// Default instance – change base URL here if needed
-const axiosInstance = createAxiosInstance(baseURL);
+const axiosInstance = createAxiosInstance(baseURL || '');
 
 const getUpdatedAuthToken = async () => {
-  console.log("getUpdatedAuthToken-----");
   const res = await axios.post(`${baseURL}/admin/auth/refresh`, {}, {
     withCredentials: true
   });

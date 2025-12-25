@@ -18,10 +18,12 @@ export default function PublicRoute({ children }: PublicRouteProps) {
       const roleId = authState.user?.roleId ?? 1;
 
       // Redirect authenticated users away from public routes
-      if (roleId === 2) {
-        router.push('/InspectorDashboard');
-      } else {
-        router.push('/adminDashboard');
+      if (roleId === 1) {
+        router.push('/admin/adminDashboard');
+      } else if (roleId === 2) {
+        router.push('/manager/managerDashboard');
+      } else if (roleId === 3) {
+        router.push('/inspector/inspectorDashboard');
       }
     }
   }, [authState.isLoading, authState.isAuthenticated, router]);

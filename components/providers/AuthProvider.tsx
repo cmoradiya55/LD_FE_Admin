@@ -10,7 +10,7 @@ interface User {
   email: string;
   role: string;
   roleId?: number;
-  phone?: string;
+  mobileNo?: string;
 }
 
 interface AuthState {
@@ -100,8 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const sendOTP = async (contact: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      // API expects countryCode (number) and mobileNo (number)
-      const countryCode = 91; // India country code
+      const countryCode = 91;
       const mobileNo = parseInt(contact, 10);
 
       if (isNaN(mobileNo) || mobileNo <= 0) {
@@ -118,9 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Send OTP Response:', response);
 
-      // Check if response indicates an error (has code field with error status or has errors array)
       if (response?.code && response?.code >= 400) {
-        // Handle validation errors from API
         const errorMessages = response?.errors?.map((err: any) => err.message).join(', ') ||
           response?.message ||
           response?.error ||
@@ -131,12 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      // Check for success indicators
       if (response?.success || response?.data || (response?.code && response?.code < 400) || !response?.code) {
         return { success: true };
       }
 
-      // If we get here, response structure is unexpected
       return {
         success: false,
         error: response?.message || response?.error || 'Failed to send OTP'
@@ -153,23 +148,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  type LoginResponse = any;
-
-  const getRoleId = (response: LoginResponse, userData: any): number => {
-    const rawRoleId =
-      userData?.roleId ||
-      userData?.role_id ||
-      response?.data?.roleId ||
-      response?.data?.role_id ||
-      response?.roleId ||
-      response?.role_id ||
-      1;
-
-    const numericRoleId = Number(rawRoleId);
-    return Number.isNaN(numericRoleId) ? 1 : numericRoleId;
-  };
-
-
   const login = async (contact: string, otp: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const countryCode = 91;
@@ -179,14 +157,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: 'Invalid mobile number' };
       }
 
-      const response = await verifyOtp({
+      const payload = {
         countryCode,
         mobileNo,
         otp
-      });
+      };
+
+      console.log('Login Request Payload:', payload);
+      const response = await verifyOtp(payload);
+      console.log('Login API Response:', response);
+
+      // Check if response indicates an error (code >= 400)
+      if (response?.code && response?.code >= 400) {
+        const errorMessage = response?.message || response?.error || 'Login failed';
+        return { success: false, error: errorMessage };
+      }
+
+      // Accept success codes: 200, 201, or any 2xx status (200-299)
+      // API returns 201 (Created) which is a valid success code
+      const isSuccess = !response?.code || (response?.code >= 201);
+      alert(`isSuccess: ${response} and response?.code: ${response?.code} and ${response?.code >= 201}`);
+      if (!isSuccess) {
+        const errorMessage = response?.message || response?.error || 'Login failed';
+        return { success: false, error: errorMessage };
+      }
 
       const token = response?.data?.accessToken;
       const user = response?.data;
+      alert(response);
+      if (!token || !user) {
+        const errorMessage = response?.message || 'Invalid response from server';
+        return { success: false, error: errorMessage };
+      }
 
       setAuthState({
         isAuthenticated: true,
@@ -207,12 +209,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('adminpro-token', token);
       }
 
-      switch (user.roleId) {
+      const roleId = user.roleId;
+      switch (roleId) {
         case 1:
-          router.push('/adminDashboard');
+          router.push('/admin/adminDashboard');
           break;
         case 2:
-          router.push('/InspectorDashboard');
+          router.push('/manager/managerDashboard');
+          break;
+        case 3:
+          router.push('/inspector/inspectorDashboard');
           break;
         default:
           return { success: false, error: 'Invalid role' };
@@ -231,18 +237,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    // Clear saved session FIRST before any state changes or redirects
     localStorage.removeItem('adminpro-auth');
     localStorage.removeItem('adminpro-token');
 
-    // Update state
     setAuthState({
       isAuthenticated: false,
       user: null,
       isLoading: false
     });
 
-    // Redirect to login
     router.push('/login');
   };
 
@@ -256,7 +259,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: updatedUser
     }));
 
-    // Update localStorage
     const savedAuth = localStorage.getItem('adminpro-auth');
     if (savedAuth) {
       const parsedAuth = JSON.parse(savedAuth);

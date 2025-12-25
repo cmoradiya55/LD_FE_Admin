@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/Button/Button';
 import TextInput from '@/components/FormComponent/TextInput';
 import MobileInput from '@/components/FormComponent/MobileInput';
-import SelectInput from '@/components/FormComponent/SelectInput';
+import { createUser, getInspectorByManager, getInspectionCentersData } from '@/lib/auth';
 import {
     ArrowLeft,
     Users,
-    UserCircle2,
     Phone,
     Mail,
     Plus,
@@ -19,6 +19,7 @@ import {
     MapPin,
     X,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 type Inspector = {
     id: number;
@@ -30,185 +31,15 @@ type Inspector = {
     imageUrl?: string;
 };
 
-// Mock data - in real app, fetch based on manager id
-const getInspectorsByManagerId = (managerId: string): Inspector[] => {
-    // Sample data - replace with API call
-    const inspectors: Record<string, Inspector[]> = {
-        '1': [
-            {
-                id: 1,
-                name: 'Vikram Mehta',
-                phone: '+91 98765 12345',
-                email: 'vikram.mehta@example.com',
-                status: 'active',
-                assignedDate: '2024-01-15',
-            },
-            {
-                id: 2,
-                name: 'Priya Desai',
-                phone: '+91 98765 23456',
-                email: 'priya.desai@example.com',
-                status: 'active',
-                assignedDate: '2024-02-20',
-            },
-            {
-                id: 3,
-                name: 'Rahul Joshi',
-                phone: '+91 98765 34567',
-                email: 'rahul.joshi@example.com',
-                status: 'active',
-                assignedDate: '2024-03-10',
-            },
-            {
-                id: 4,
-                name: 'Anjali Shah',
-                phone: '+91 98765 45678',
-                email: 'anjali.shah@example.com',
-                status: 'inactive',
-                assignedDate: '2024-01-05',
-            },
-            {
-                id: 5,
-                name: 'Kiran Patel',
-                phone: '+91 98765 56789',
-                email: 'kiran.patel@example.com',
-                status: 'active',
-                assignedDate: '2024-04-01',
-            },
-        ],
-        '3': [
-            {
-                id: 6,
-                name: 'Harsh Trivedi',
-                phone: '+91 98765 67890',
-                email: 'harsh.trivedi@example.com',
-                status: 'active',
-                assignedDate: '2024-01-20',
-            },
-            {
-                id: 7,
-                name: 'Neha Gupta',
-                phone: '+91 98765 78901',
-                email: 'neha.gupta@example.com',
-                status: 'active',
-                assignedDate: '2024-02-15',
-            },
-            {
-                id: 8,
-                name: 'Manoj Kumar',
-                phone: '+91 98765 89012',
-                email: 'manoj.kumar@example.com',
-                status: 'active',
-                assignedDate: '2024-03-25',
-            },
-        ],
-        '4': [
-            {
-                id: 9,
-                name: 'Suresh Patel',
-                phone: '+91 98765 90123',
-                email: 'suresh.patel@example.com',
-                status: 'active',
-                assignedDate: '2024-01-10',
-            },
-            {
-                id: 10,
-                name: 'Meera Shah',
-                phone: '+91 98765 01234',
-                email: 'meera.shah@example.com',
-                status: 'active',
-                assignedDate: '2024-02-05',
-            },
-            {
-                id: 11,
-                name: 'Rajesh Kumar',
-                phone: '+91 98765 12340',
-                email: 'rajesh.kumar@example.com',
-                status: 'active',
-                assignedDate: '2024-03-15',
-            },
-            {
-                id: 12,
-                name: 'Divya Patel',
-                phone: '+91 98765 23401',
-                email: 'divya.patel@example.com',
-                status: 'active',
-                assignedDate: '2024-04-10',
-            },
-            {
-                id: 13,
-                name: 'Amit Shah',
-                phone: '+91 98765 34012',
-                email: 'amit.shah@example.com',
-                status: 'active',
-                assignedDate: '2024-05-01',
-            },
-            {
-                id: 14,
-                name: 'Kavita Desai',
-                phone: '+91 98765 40123',
-                email: 'kavita.desai@example.com',
-                status: 'inactive',
-                assignedDate: '2024-01-25',
-            },
-            {
-                id: 15,
-                name: 'Nilesh Mehta',
-                phone: '+91 98765 01230',
-                email: 'nilesh.mehta@example.com',
-                status: 'active',
-                assignedDate: '2024-06-01',
-            },
-        ],
-        '6': [
-            {
-                id: 16,
-                name: 'Pankaj Joshi',
-                phone: '+91 98765 12301',
-                email: 'pankaj.joshi@example.com',
-                status: 'active',
-                assignedDate: '2024-01-12',
-            },
-            {
-                id: 17,
-                name: 'Sunita Patel',
-                phone: '+91 98765 23012',
-                email: 'sunita.patel@example.com',
-                status: 'active',
-                assignedDate: '2024-02-18',
-            },
-            {
-                id: 18,
-                name: 'Ramesh Shah',
-                phone: '+91 98765 30123',
-                email: 'ramesh.shah@example.com',
-                status: 'active',
-                assignedDate: '2024-03-20',
-            },
-            {
-                id: 19,
-                name: 'Geeta Desai',
-                phone: '+91 98765 01231',
-                email: 'geeta.desai@example.com',
-                status: 'active',
-                assignedDate: '2024-04-15',
-            },
-        ],
-    };
-
-    return inspectors[managerId] || [];
-};
-
 interface InspectorListComponentProps {
     managerId: string;
 }
 
 type InspectorFormValues = {
     name: string;
-    phone: string;
+    mobileNo: string;
     phoneCountryCode: string;
     email: string;
-    status: 'active' | 'inactive';
 };
 
 const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
@@ -216,16 +47,110 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
 }) => {
     const router = useRouter();
 
-    const managerCityMap: Record<string, string> = {
-        '1': 'Rajkot',
-        '3': 'Ahmedabad',
-        '4': 'Surat',
-        '6': 'Vadodara',
-    };
+    const { data: inspectionCentersData } = useQuery({
+        queryKey: ['GET_INSPECTION_CENTERS_DATA'],
+        queryFn: async () => {
+            try {
+                const response = await getInspectionCentersData();
+                if (response?.code === 200 && response?.data) {
+                    return response.data;
+                }
+                return [];
+            } catch (error) {
+                console.error("Error fetching inspection centers data:", error);
+                toast.error("Error fetching inspection centers data");
+                return [];
+            }
+        },
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
 
-    const cityName = managerCityMap[managerId] || 'Unknown City';
+    const cityName = useMemo(() => {
+        if (!inspectionCentersData || !managerId) return 'Unknown City';
+        
+        for (const center of inspectionCentersData) {
+            if (center.managers && center.managers.length > 0) {
+                const manager = center.managers.find((m: any) => String(m.id) === String(managerId));
+                if (manager) {
+                    return center.cityName || 'Unknown City';
+                }
+            }
+        }
+        return 'Unknown City';
+    }, [inspectionCentersData, managerId]);
 
-    const [inspectors, setInspectors] = useState<Inspector[]>(getInspectorsByManagerId(managerId));
+    const { data: inspectorsData, isLoading, isError, refetch: refetchInspectors } = useQuery<Inspector[]>({
+        queryKey: ['GET_INSPECTORS_BY_MANAGER', managerId],
+        queryFn: async () => {
+            try {
+                const response = await getInspectorByManager(managerId);
+                if (response?.code === 200 && response?.data) {
+                    return response.data.map((item: any) => {
+                        let assignedDate = '';
+                        if (item.createdAt) {
+                            try {
+                                const dateMatch = item.createdAt.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+                                if (dateMatch) {
+                                    const [, day, monthName, year] = dateMatch;
+                                    const monthMap: Record<string, string> = {
+                                        'january': '01', 'february': '02', 'march': '03', 'april': '04',
+                                        'may': '05', 'june': '06', 'july': '07', 'august': '08',
+                                        'september': '09', 'october': '10', 'november': '11', 'december': '12'
+                                    };
+                                    const month = monthMap[monthName.toLowerCase()] || '01';
+                                    const paddedDay = day.padStart(2, '0');
+                                    assignedDate = `${paddedDay}-${month}-${year}`;
+                                } else {
+                                    const parsedDate = new Date(item.createdAt);
+                                    if (!isNaN(parsedDate.getTime())) {
+                                        assignedDate = parsedDate.toLocaleDateString('en-GB', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric'
+                                        }).replace(/\//g, '-');
+                                    } else {
+                                        assignedDate = item.createdAt;
+                                    }
+                                }
+                            } catch (error) {
+                                assignedDate = item.createdAt;
+                            }
+                        } else {
+                            assignedDate = new Date().toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }).replace(/\//g, '-');
+                        }
+
+                        return {
+                            id: item.id,
+                            name: item.name || '',
+                            phone: item.countryCode && item.mobileNo 
+                                ? `+${item.countryCode} ${item.mobileNo}`
+                                : '',
+                            email: item.email || '',
+                            status: item.isActive !== undefined 
+                                ? (item.isActive ? 'active' as const : 'inactive' as const)
+                                : 'active' as const,
+                            assignedDate: assignedDate,
+                            imageUrl: item.selfie_image || undefined,
+                        };
+                    });
+                }
+                return [];
+            } catch (error) {
+                console.error("Error fetching inspectors:", error);
+                throw error;
+            }
+        },
+        enabled: !!managerId,
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
+
+    const inspectors = inspectorsData || [];
     const activeCount = inspectors.filter((i) => i.status === 'active').length;
     const [isInspectorModalOpen, setIsInspectorModalOpen] = useState(false);
 
@@ -237,42 +162,51 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
     } = useForm<InspectorFormValues>({
         defaultValues: {
             name: '',
-            phone: '',
+            mobileNo: '',
             phoneCountryCode: '+91',
-            email: '',
-            status: 'active',
         },
     });
 
     const handleAddInspector = () => {
         resetInspectorForm({
             name: '',
-            phone: '',
+            mobileNo: '',
             phoneCountryCode: '+91',
-            email: '',
-            status: 'active',
         });
         setIsInspectorModalOpen(true);
     };
 
-    const onSubmitInspector = (data: InspectorFormValues) => {
-        const today = new Date();
-        const day = String(today.getDate()).padStart(2, '0');
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const year = today.getFullYear();
-        const formattedDate = `${day}-${month}-${year}`; // DD-MM-YYYY format
+    const onSubmitInspector = async (data: InspectorFormValues) => {
+        if (!managerId) {
+            console.error('No manager ID available');
+            return;
+        }
 
-        const newInspector: Inspector = {
-            id: Date.now(), // In real app, this would come from the API
+        const payload = {
+            roleId: 3,
             name: data.name,
-            phone: `${data.phoneCountryCode} ${data.phone}`,
-            email: data.email,
-            status: data.status,
-            assignedDate: formattedDate,
+            countryCode: 91,
+            mobileNo: Number(data.mobileNo),
+            managerId: Number(managerId),
         };
 
-        setInspectors((prev) => [...prev, newInspector]);
-        setIsInspectorModalOpen(false);
+        try {
+            const response = await createUser(payload);
+            console.log('Response:', response);
+
+            if (response?.code === 201 || response?.code === 200) {
+                await refetchInspectors();
+                resetInspectorForm({
+                    name: '',
+                    mobileNo: '',
+                    phoneCountryCode: '+91',
+                });
+                setIsInspectorModalOpen(false);
+            }
+        } catch (error) {
+            console.error('Failed to create inspector:', error);
+            toast.error("Failed to create inspector");
+        }
     };
 
     return (
@@ -389,7 +323,17 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                 </div>
 
                 <div className="divide-y divide-gray-100">
-                    {inspectors.map((inspector) => (
+                    {isLoading && (
+                        <div className="px-4 py-8 text-center text-sm text-gray-500 sm:px-5">
+                            Loading inspectors...
+                        </div>
+                    )}
+                    {isError && (
+                        <div className="px-4 py-8 text-center text-sm text-red-500 sm:px-5">
+                            Error loading inspectors. Please try again.
+                        </div>
+                    )}
+                    {!isLoading && !isError && inspectors.map((inspector) => (
                         <div
                             key={inspector.id}
                             className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4"
@@ -439,10 +383,6 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                                             <Phone className="h-3 w-3 text-gray-400" />
                                             <span>{inspector.phone}</span>
                                         </span>
-                                        <span className="inline-flex items-center gap-1">
-                                            <Mail className="h-3 w-3 text-gray-400" />
-                                            <span>{inspector.email}</span>
-                                        </span>
                                         <span className="text-gray-400">
                                             Assigned: {inspector.assignedDate}
                                         </span>
@@ -452,7 +392,7 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                         </div>
                     ))}
 
-                    {inspectors.length === 0 && (
+                    {!isLoading && !isError && inspectors.length === 0 && (
                         <div className="px-4 py-8 text-center text-sm text-gray-500 sm:px-5">
                             No inspectors assigned to this center yet. Use{' '}
                             <span className="font-semibold text-blue-600">
@@ -501,35 +441,11 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                             />
 
                             <MobileInput
-                                name="phone"
+                                name="mobileNo"
                                 control={inspectorControl}
                                 label="Mobile Number"
                                 required
-                                error={inspectorErrors.phone}
-                                inputClassName="px-3 py-2 text-sm"
-                            />
-
-                            <TextInput
-                                name="email"
-                                control={inspectorControl}
-                                label="Email"
-                                type="email"
-                                placeholder="name@example.com"
-                                required
-                                error={inspectorErrors.email}
-                                inputClassName="px-3 py-2 text-sm"
-                            />
-
-                            <SelectInput
-                                name="status"
-                                control={inspectorControl}
-                                label="Status"
-                                options={[
-                                    { value: 'active', label: 'Active' },
-                                    { value: 'inactive', label: 'Inactive' },
-                                ]}
-                                required
-                                error={inspectorErrors.status}
+                                error={inspectorErrors.mobileNo}
                                 inputClassName="px-3 py-2 text-sm"
                             />
 

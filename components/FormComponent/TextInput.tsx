@@ -21,6 +21,7 @@ interface TextInputProps {
   hideLabel?: boolean;
   inputClassName?: string;
   rules?: RegisterOptions;
+  onChange?: (value: string) => void;
 }
 
 const TextInput: React.FC<TextInputProps> = ({
@@ -37,6 +38,7 @@ const TextInput: React.FC<TextInputProps> = ({
   hideLabel = false,
   inputClassName = 'px-4 py-3',
   rules,
+  onChange,
 }) => {
   return (
     <div className={hideLabel ? className : `space-y-2 ${className}`}>
@@ -67,7 +69,13 @@ const TextInput: React.FC<TextInputProps> = ({
         render={({ field }) => (
           <input
             {...field}
-            value={field.value as string || ''}
+            onChange={(e) => {
+              field.onChange(e);
+              if (onChange) {
+                onChange(e.target.value);
+              }
+            }}
+            value={(field.value as string) || ''}
             id={name}
             type={type}
             placeholder={placeholder}

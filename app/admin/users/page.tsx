@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import UserComponent from '@/app/(admin)/users/UserComponent';
+import UserComponent from '@/app/admin/users/UserComponent';
 
 export const metadata: Metadata = {
   title: 'Users',
