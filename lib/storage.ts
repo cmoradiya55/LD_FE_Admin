@@ -4,6 +4,7 @@
 
 const TOKEN_KEY = 'adminpro-token';
 const AUTH_KEY = 'adminpro-auth';
+const DOCUMENT_STATUS_KEY = 'documentStatus';
 
 /**
  * Retrieves the authentication token from localStorage
@@ -48,5 +49,42 @@ export function clearAuthData(): void {
     localStorage.removeItem(AUTH_KEY);
   } catch (error) {
     console.error('Error clearing auth data:', error);
+  }
+}
+
+/**
+ * Retrieves the document status from localStorage
+ * @returns The document status number (1, 2, or 3) or null if not found
+ */
+export function getDocumentStatus(): number | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const status = localStorage.getItem(DOCUMENT_STATUS_KEY);
+    if (status) {
+      return parseInt(status, 10);
+    }
+    return null;
+  } catch (error) {
+    console.error('Error retrieving document status:', error);
+    return null;
+  }
+}
+
+/**
+ * Saves the document status to localStorage
+ * @param status The document status number (1, 2, or 3)
+ */
+export function setDocumentStatus(status: number): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    localStorage.setItem(DOCUMENT_STATUS_KEY, status.toString());
+  } catch (error) {
+    console.error('Error saving document status:', error);
   }
 }

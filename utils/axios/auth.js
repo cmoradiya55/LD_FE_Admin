@@ -64,11 +64,12 @@ const deleteRequest = async (url, payload) => {
 };
 
 
-// Auth APIs
+// User Authentication APIs
 export const sendOtp = (payload) => postRequest('/admin/auth/mobile/send-otp', payload);
 export const verifyOtp = (payload) => postRequest('/admin/auth/mobile/verify-otp', payload);
+export const submitDocumentDetails = (payload) => patchRequest('/admin/auth/documents', payload);
 
-// User Manangement APIs
+// User Management APIs
 export const createUser = (payload) => postRequest(`/admin/user-management/create-user`, payload);
 export const getInspectorByManager = (managerId) => getRequest(`/admin/user-management/inspectors/${managerId}`);
 
@@ -77,18 +78,6 @@ export const getInspectionCentersData = () => getRequest(`/admin/inspection-cent
 export const putUpdateInspectionCenter = (payload) => putRequest(`/admin/inspection-centre/${payload.id}`, payload);
 export const getCitySuggestions = (payload) => getRequest(`/admin/inspection-centre/city-suggestions?q=${payload.q}&page=${payload.page}&limit=${payload.limit}&cityId=${payload.cityId}`);
 
+// Storage Services APIs
+export const getPreSignedUrlForImage = (payload) => postRequest('/storage/upload-url', payload);
 
-export const getPreSignedUrlForImage = async (payload) => {
-    try {
-        return await axiosInstance.post(`/tenant/s3/presigned-upload`, payload).then((res) => {
-            console.log("Presigned URL Response:", res?.data);
-            return res?.data;
-
-        }).catch((err) => {
-            return err?.response?.data;
-        });
-    } catch (error) {
-        return error;
-    }
-
-};
