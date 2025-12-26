@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/Button/Button';
 import { cn } from '@/lib/utils';
 
 interface DataTableWrapperProps {

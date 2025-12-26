@@ -6,6 +6,59 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+
+  --color-primary: #2563eb;
+  --color-primary-dark: #1e40af;
+  --color-primary-light: #3b82f6;
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+
+  --color-secondary: #0ea5e9;
+  --color-secondary-dark: #0284c7;
+  --color-secondary-light: #38bdf8;
+  --color-secondary-50: #f0f9ff;
+  --color-secondary-100: #e0f2fe;
+  --color-secondary-200: #bae6fd;
+
+  --color-accent: #6366f1;
+  --color-accent-soft: #ede9fe;
+
+  --color-background: #f9fafb;
+  --color-background-secondary: #ffffff;
+
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-secondary-strong: #475569;
+  --color-text-tertiary: #94a3b8;
+  --color-text-inverse: #ffffff;
+
+  --color-border: #e2e8f0;
+
+  --color-success: #10b981;
+  --color-success-soft: #d1fae5;
+  --color-success-border: #a7f3d0;
+  --color-success-dark: #047857;
+
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef3c7;
+  --color-warning-border: #fde68a;
+  --color-warning-dark: #b45309;
+
+  --color-error: #ef4444;
+  --color-error-soft: #fee2e2;
+  --color-error-border: #fecaca;
+  --color-error-dark: #b91c1c;
+
+  --color-gradient-from: #3b82f6;
+  --color-gradient-to: #1d4ed8;
+
+  --color-card-bg: #ffffff;
+  --color-hover-bg: #f1f5f9;
+  --color-info-soft: #dbeafe;
+
+  --background: var(--color-background);
+  --foreground: var(--color-text);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -13,62 +66,191 @@
     --foreground-rgb: 255, 255, 255;
     --background-start-rgb: 0, 0, 0;
     --background-end-rgb: 0, 0, 0;
+    --background: #0a0a0a;
+    --foreground: #ededed;
   }
 }
 
 @layer base {
   :root {
+    /* Semantic color tokens used by Tailwind's shadcn preset */
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --destructive-foreground: 210 40% 98%;
+    --ring: 221.2 83.2% 53.3%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    /* Legacy semantic tokens used across the app */
+    --color-primary: #2563eb;
+    --color-primary-dark: #1e40af;
+    --color-primary-light: #3b82f6;
+    --color-secondary: #0ea5e9;
+    --color-secondary-dark: #0284c7;
+    --color-secondary-light: #38bdf8;
+    --color-accent: #6366f1;
+    --color-background: #ffffff;
+    --color-background-secondary: #f8fafc;
+    --color-text: #1e293b;
+    --color-text-secondary: #64748b;
+    --color-border: #e2e8f0;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-gradient-from: #3b82f6;
+    --color-gradient-to: #1d4ed8;
+    --color-card-bg: #ffffff;
+    --color-hover-bg: #f1f5f9;
+
+    /* Car detail curve theme tokens */
+    --car-curve-linear-start: #cfe8ff;
+    --car-curve-linear-mid-1: #ffffff;
+    --car-curve-linear-mid-2: #d7edff;
+    --car-curve-linear-end: #cfe8ff;
+    --car-curve-stroke-inner: #a5d8ff;
+    --car-curve-stroke-outer: #a5d8ff;
+
+    /* Tailwind utility palette expressed as RGB triples */
+    --palette-white: 255 255 255;
+    --palette-black: 0 0 0;
+
+    --palette-gray-50: 249 250 251;
+    --palette-gray-100: 243 244 246;
+    --palette-gray-200: 229 231 235;
+    --palette-gray-300: 209 213 219;
+    --palette-gray-400: 156 163 175;
+    --palette-gray-500: 107 114 128;
+    --palette-gray-600: 75 85 99;
+    --palette-gray-700: 55 65 81;
+    --palette-gray-800: 31 41 55;
+    --palette-gray-900: 17 24 39;
+
+    --palette-slate-800: 30 41 59;
+
+    --palette-blue-50: 239 246 255;
+    --palette-blue-100: 219 234 254;
+    --palette-blue-200: 191 219 254;
+    --palette-blue-300: 147 197 253;
+    --palette-blue-400: 96 165 250;
+    --palette-blue-500: 59 130 246;
+    --palette-blue-600: 37 99 235;
+    --palette-blue-700: 29 78 216;
+    --palette-blue-800: 30 64 175;
+    --palette-blue-900: 30 58 138;
+
+    --palette-primary-50: 239 246 255;
+    --palette-primary-100: 219 234 254;
+    --palette-primary-200: 191 219 254;
+    --palette-primary-300: 147 197 253;
+    --palette-primary-400: 96 165 250;
+    --palette-primary-500: 59 130 246;
+    --palette-primary-600: 37 99 235;
+    --palette-primary-700: 29 78 216;
+    --palette-primary-800: 30 64 175;
+    --palette-primary-900: 30 58 138;
+
+    --palette-green-50: 240 253 244;
+    --palette-green-100: 220 252 231;
+    --palette-green-200: 187 247 208;
+    --palette-green-500: 34 197 94;
+    --palette-green-600: 22 163 74;
+    --palette-green-700: 21 128 61;
+    --palette-green-800: 22 101 52;
+
+    --palette-red-50: 254 242 242;
+    --palette-red-100: 254 226 226;
+    --palette-red-300: 252 165 165;
+    --palette-red-400: 248 113 113;
+    --palette-red-500: 239 68 68;
+    --palette-red-600: 220 38 38;
+    --palette-red-700: 185 28 28;
+
+    --palette-yellow-100: 254 249 195;
+    --palette-yellow-600: 202 138 4;
+    --palette-yellow-800: 133 77 14;
+
+    --palette-orange-50: 255 247 237;
+    --palette-orange-100: 255 237 213;
+    --palette-orange-500: 249 115 22;
+    --palette-orange-600: 234 88 12;
+
+    --palette-purple-100: 243 232 255;
+    --palette-purple-500: 168 85 247;
+    --palette-purple-600: 147 51 234;
+    --palette-purple-700: 126 34 206;
+    --palette-purple-800: 107 33 168;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --ring: 224.3 76.3% 48%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    --color-primary: #3b82f6;
+    --color-primary-dark: #2563eb;
+    --color-primary-light: #60a5fa;
+    --color-secondary: #38bdf8;
+    --color-secondary-dark: #0ea5e9;
+    --color-secondary-light: #7dd3fc;
+    --color-accent: #818cf8;
+    --color-background: #0f172a;
+    --color-background-secondary: #1e293b;
+    --color-text: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-border: #334155;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-gradient-from: #3b82f6;
+    --color-gradient-to: #1e40af;
+    --color-card-bg: #1e293b;
+    --color-hover-bg: #334155;
+
+    --car-curve-linear-start: #031f21;
+    --car-curve-linear-mid-1: #064e4b;
+    --car-curve-linear-mid-2: #0d7766;
+    --car-curve-linear-end: #021312;
+    --car-curve-stroke-inner: #2dd4bf;
+    --car-curve-stroke-outer: #0f766e;
   }
 }
 
@@ -76,8 +258,155 @@
   * {
     @apply border-border;
   }
+
+  html {
+    font-size: 0.92rem;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    margin: 0;
+    background-color: #f5f7fd;
+    color: var(--foreground);
+    font-family: Arial, Helvetica, sans-serif;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  main {
+    background: #ffffff;
+    min-height: 100vh;
+    padding: 1.25rem;
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      font-size: 0.98rem;
+    }
+  }
+
+  /* Mobile-specific tweaks: larger base font size and tighter padding */
+  @media (max-width: 640px) {
+    html {
+      font-size: 1.05rem;
+    }
+
+    main {
+      padding: 0.75rem 0.5rem;
+    }
+
+    /* Global font size increases for mobile across entire website */
+    .text-xs {
+      font-size: 0.875rem !important;
+      line-height: 1.25rem;
+    }
+
+    .text-sm {
+      font-size: 1rem !important;
+      line-height: 1.5rem;
+    }
+
+    .text-base {
+      font-size: 1.125rem !important;
+      line-height: 1.75rem;
+    }
+
+    .text-lg {
+      font-size: 1.375rem !important;
+      line-height: 1.75rem;
+    }
+
+    .text-xl {
+      font-size: 1.5rem !important;
+      line-height: 2rem;
+    }
+
+    .text-2xl {
+      font-size: 1.75rem !important;
+      line-height: 2.25rem;
+    }
+
+    .text-3xl {
+      font-size: 2rem !important;
+      line-height: 2.5rem;
+    }
+
+    .text-4xl {
+      font-size: 2.5rem !important;
+      line-height: 3rem;
+    }
+
+    .text-5xl {
+      font-size: 3rem !important;
+      line-height: 3.5rem;
+    }
+
+    /* Car details page: keep existing adjustments if needed */
+    .car-details-page .text-xs {
+      font-size: 0.875rem;
+    }
+
+    .car-details-page .text-sm {
+      font-size: 1rem;
+    }
+
+    .car-details-page .text-base {
+      font-size: 1.125rem;
+    }
+
+    .car-details-page .text-lg {
+      font-size: 1.375rem;
+    }
+
+    .car-details-page .text-xl {
+      font-size: 1.5rem;
+    }
+
+    .car-details-page .text-2xl {
+      font-size: 1.75rem;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-[0_12px_35px_rgba(15,23,42,0.08)] border border-white p-6 transition-all duration-200;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .badge-pending {
+    @apply badge bg-yellow-100 text-yellow-800;
+  }
+  
+  .badge-live {
+    @apply badge bg-green-100 text-green-800;
+  }
+  
+  .badge-sold {
+    @apply badge bg-gray-100 text-gray-800;
+  }
+  
+  .badge-verified {
+    @apply badge bg-blue-100 text-blue-800;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-gray-800 placeholder:text-gray-400 transition-all duration-200 focus:border-[var(--color-primary-dark)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-200)] focus:ring-opacity-60;
+  }
+
+  .glass-card {
+    @apply rounded-3xl border border-white bg-white/85 text-slate-900 shadow-[0_10px_30px_rgba(15,23,42,0.1)] backdrop-blur-xl;
+  }
+
+  .pill {
+    @apply inline-flex items-center rounded-full border border-primary-100 bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-600;
   }
 }
 
@@ -130,5 +459,138 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  .text-primary {
+    color: var(--color-primary);
+  }
+
+  .text-secondary {
+    color: var(--color-secondary);
+  }
+
+  .text-accent {
+    color: var(--color-accent);
+  }
+
+  .text-muted {
+    color: var(--color-text-secondary);
+  }
+
+  .text-success {
+    color: var(--color-success);
+  }
+
+  .text-warning {
+    color: var(--color-warning);
+  }
+
+  .text-error {
+    color: var(--color-error);
+  }
+
+  .text-inverse {
+    color: var(--color-text-inverse);
+  }
+
+  .bg-base {
+    background-color: var(--color-background);
+  }
+
+  .bg-surface {
+    background-color: var(--color-card-bg);
+  }
+
+  .bg-muted {
+    background-color: var(--color-background-secondary);
+  }
+
+  .bg-primary {
+    background-color: var(--color-primary);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-secondary {
+    background-color: var(--color-secondary);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-accent {
+    background-color: var(--color-accent);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-success {
+    background-color: var(--color-success);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-warning {
+    background-color: var(--color-warning);
+    color: var(--color-background);
+  }
+
+  .bg-error {
+    background-color: var(--color-error);
+    color: var(--color-text-inverse);
+  }
+
+  .bg-hover {
+    background-color: var(--color-hover-bg);
+  }
+
+  .text-gradient {
+    background-image: linear-gradient(
+      90deg,
+      var(--color-gradient-from),
+      var(--color-gradient-to)
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .bg-gradient-primary {
+    background-image: linear-gradient(
+      135deg,
+      var(--color-gradient-from),
+      var(--color-gradient-to)
+    );
+  }
+
+  .placeholder-muted::placeholder {
+    color: var(--color-text-secondary);
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 1px; 
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.25);
+    border-radius: 9999px;
+  }
+
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(59, 130, 246, 0.4);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

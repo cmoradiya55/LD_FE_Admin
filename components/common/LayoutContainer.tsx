@@ -27,9 +27,9 @@ export default function LayoutContainer({
 
   const paddingClasses = {
     none: 'p-0',
-    sm: 'p-2',
-    md: 'p-4 md:p-6 lg:p-8',
-    lg: 'p-6 md:p-8 lg:p-12'
+    sm: 'p-1.5',
+    md: 'p-2 sm:p-3 md:p-4',
+    lg: 'p-3 sm:p-4 md:p-6'
   };
 
   return (
