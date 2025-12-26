@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Header from '@/components/Header/Header';
-import Sidebar from '@/components/Sidebar/Sidebar';
-import { LoadingSpinner } from '@/components/common';
+import { useAuth } from "@/hooks/useAuth";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { LoadingSpinner } from "../common";
 import { Button } from '@/components/Button/Button';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter, usePathname } from 'next/navigation';
-import { toast } from 'sonner';
+import Sidebar from '@/components/Sidebar/Sidebar';
+import Header from '@/components/Header/Header';
+
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -18,8 +19,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(false);
   const { authState, logout } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
+  const router = useRouter();
 
   // Check screen size for mobile-only roles (Manager and Inspector)
   useEffect(() => {

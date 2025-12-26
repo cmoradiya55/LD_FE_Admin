@@ -1,11 +1,7 @@
-import React from 'react'
+"use client";
+import React from "react";
 
 const ManagerDashboard = () => {
-    return (
-        <div>
-            <h1>Manager Dashboard</h1>
-        </div>
-    )
+  return <div>Manager Dashboard</div>;
 }
-
 export default ManagerDashboard;

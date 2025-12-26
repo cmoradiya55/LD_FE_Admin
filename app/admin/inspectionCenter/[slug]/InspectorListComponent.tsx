@@ -8,7 +8,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/Button/Button';
 import TextInput from '@/components/FormComponent/TextInput';
 import MobileInput from '@/components/FormComponent/MobileInput';
-import { createUser, getInspectorByManager, getInspectionCentersData } from '@/lib/auth';
 import {
     ArrowLeft,
     Users,
@@ -20,6 +19,7 @@ import {
     X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { createUser, getInspectionCentersData, getInspectorByManager } from '@/utils/axios/auth';
 
 type Inspector = {
     id: number;

@@ -6,13 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  Save, 
+import {
+  Save,
   Camera,
   ArrowLeft,
   Upload
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/common';
+import { uploadToPresignedUrl } from '@/utils/axios/uploadFileAPI';
 
 interface ProfileScreenProps {
   onBack: () => void;
@@ -20,6 +21,8 @@ interface ProfileScreenProps {
 
 export default function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profilePicLink, setProfilePicLink] = useState<string | null>(null);
   const [profileData, setProfileData] = useState({
     firstName: 'John',
     lastName: 'Smith',
@@ -31,10 +34,10 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
   const handleSave = async () => {
     setIsLoading(true);
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     setIsLoading(false);
     // Show success message or redirect
   };
@@ -46,17 +49,41 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
     }));
   };
 
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = event.target.files?.[0];
+  //   if (file) {
+  //     const reader = new FileReader();
+  //     reader.onload = (e) => {
+  //       setProfileData(prev => ({
+  //         ...prev,
+  //         avatar: e.target?.result as string
+  //       }));
+  //     };
+  //     reader.readAsDataURL(file);
+  //   }
+  // };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileData(prev => ({
-          ...prev,
-          avatar: e.target?.result as string
-        }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file && file.size <= 15 * 1024 * 1024) {
+      try {
+        const uploadResponse = await uploadToPresignedUrl(file);
+        if (typeof uploadResponse === 'string') {
+          setProfilePicLink(uploadResponse);
+        }
+        console.log("Upload Response:", uploadResponse);
+
+        const reader = new FileReader();
+        reader.onload = (e: ProgressEvent<FileReader>) => {
+          const newProfileImage = e.target?.result as string;
+          setProfileImage(newProfileImage);
+        };
+        reader.readAsDataURL(file);
+      } catch (error) {
+        console.error("Error uploading image:", error);
+      }
     }
   };
 
@@ -90,11 +117,15 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
               <div className="flex flex-col items-center space-y-4">
                 <div className="relative">
                   <Avatar className="w-32 h-32 border-4 border-white shadow-lg">
-                    <AvatarImage src={profileData.avatar} alt={`${profileData.firstName} ${profileData.lastName}`} />
+                    <AvatarImage
+                      // src={profileData.avatar}
+                      src={profilePicLink || profileImage || ""}
+                      alt="Profile" />
                     <AvatarFallback className="bg-gradient-to-r from-blue-600 to-blue-700 text-white text-2xl">
                       {profileData.firstName[0]}{profileData.lastName[0]}
                     </AvatarFallback>
                   </Avatar>
+
                   <Button
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
@@ -111,7 +142,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={handlePhotoUpload}
+                  onChange={handleImageUpload}
                   className="hidden"
                 />
               </div>

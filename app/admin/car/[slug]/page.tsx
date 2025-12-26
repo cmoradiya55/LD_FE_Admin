@@ -15,7 +15,7 @@ export default function CarDetailsPage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Car Not Found</h2>
-                    <p className="text-gray-600">The car you're looking for doesn't exist.</p>
+                    <p className="text-gray-600">The car you&#39;re looking for doesn&#39;t exist.</p>
                 </div>
             </div>
         );

@@ -201,7 +201,7 @@ export default function Sidebar({
   // Check if any submenu item is active for a parent (memoized)
   const isSubMenuActive = useCallback((parentId: string) => {
     const parent = menuItemMap.get(parentId);
-  }, [currentPage, menuItemMap]);
+  }, [currentPage, menuItemMap, ]);
 
   // Handle page change and close mobile menu
   const handlePageChange = useCallback((page: string) => {
@@ -367,10 +367,12 @@ export default function Sidebar({
                     "transition-all duration-200",
                     collapsed ? "w-4 h-4 sm:w-5 sm:h-5 mx-auto" : "w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3",
                     collapsed
-                      ? (isActive || isSubItemActive) ? "text-blue-600" : "text-gray-600"
-                      : isActive ? "lg:text-white text-blue-600" : "text-gray-600",
+                      ? ((isActive || isSubItemActive) ? "text-blue-600" : "text-gray-600")
+                      : (isActive ? "lg:text-white text-blue-600" : "text-gray-600"),
                     isHovered && !collapsed && !isActive && "scale-110"
                   )} />
+
+                  
                   
                   {!collapsed && (
                     <>

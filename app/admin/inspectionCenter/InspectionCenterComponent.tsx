@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/Button/Button';
 import TextInput from '@/components/FormComponent/TextInput';
-import SelectInput from '@/components/FormComponent/SelectInput';
 import MobileInput from '@/components/FormComponent/MobileInput';
 import {
     Building2,
@@ -20,9 +19,9 @@ import {
     Search,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { getInspectionCentersData, putUpdateInspectionCenter, createUser, getCitySuggestions, getInspectorByManager } from '@/lib/auth';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { createUser, getCitySuggestions, getInspectionCentersData, getInspectorByManager, putUpdateInspectionCenter } from '@/utils/axios/auth';
 
 type Manager = {
     id: number;

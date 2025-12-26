@@ -5,7 +5,7 @@ import axios, {
 } from 'axios';
 import { getToken, clearAuthData } from '@/lib/storage';
 
-const createAxiosInstance = (baseURL: string): AxiosInstance => {
+const createAxiosInstance = (baseURL) => {
   console.log("=== createAxiosInstance called ===");
   console.log("baseURL parameter-----", baseURL);
   console.log("Environment:", typeof window !== 'undefined' ? 'CLIENT' : 'SERVER');
@@ -19,7 +19,7 @@ const createAxiosInstance = (baseURL: string): AxiosInstance => {
   });
 
   instance.interceptors.request.use(
-    (config: InternalAxiosRequestConfig) => {
+    (config) => {
       if (typeof window !== 'undefined') {
         const token = getToken();
         if (token && token !== 'null') {
@@ -29,14 +29,14 @@ const createAxiosInstance = (baseURL: string): AxiosInstance => {
       }
       return config;
     },
-    (error: AxiosError) => {
+    (error) => {
       return Promise.reject(error);
     }
   );
 
   instance.interceptors.response.use(
     (response) => response,
-    (error: AxiosError | any) => {
+    (error) => {
       if (error.response) {
         const status = error.response.status;
         const data = error.response.data;

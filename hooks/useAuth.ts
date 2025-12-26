@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { sendOtp, verifyOtp } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { sendOtp, verifyOtp } from '@/utils/axios/auth';
 
 interface User {
   id: string;

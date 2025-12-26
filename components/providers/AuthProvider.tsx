@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { sendOtp, verifyOtp } from '@/lib/auth';
+import { sendOtp, verifyOtp } from '@/utils/axios/auth';
 
 interface User {
   id: string;
@@ -11,6 +11,7 @@ interface User {
   role: string;
   roleId?: number;
   mobileNo?: string;
+  documentStatus?: number;  
 }
 
 interface AuthState {
@@ -176,7 +177,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Accept success codes: 200, 201, or any 2xx status (200-299)
       // API returns 201 (Created) which is a valid success code
       const isSuccess = !response?.code || (response?.code >= 201);
-      alert(`isSuccess: ${response} and response?.code: ${response?.code} and ${response?.code >= 201}`);
       if (!isSuccess) {
         const errorMessage = response?.message || response?.error || 'Login failed';
         return { success: false, error: errorMessage };
@@ -184,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const token = response?.data?.accessToken;
       const user = response?.data;
-      alert(response);
+      console.log('User Data:', user);
       if (!token || !user) {
         const errorMessage = response?.message || 'Invalid response from server';
         return { success: false, error: errorMessage };

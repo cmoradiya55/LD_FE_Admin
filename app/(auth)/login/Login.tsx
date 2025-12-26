@@ -279,7 +279,7 @@ export default function Login() {
                     </h2>
                   </div>
                   <p className="text-sm text-gray-600">
-                    We've sent a 6-digit code to{' '}
+                    We&apos;ve sent a 6-digit code to{' '}
                     <span className="font-semibold text-gray-900">+91 {contact}</span>
                   </p>
                 </div>
