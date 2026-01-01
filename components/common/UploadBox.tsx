@@ -1,43 +1,108 @@
 "use client";
 
 import Image from "next/image";
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
+import axios from "axios";
+import { getPreSignedUrlForImage } from "@/utils/axios/auth";
 
 export interface UploadBoxProps {
   label: string;
+  category?: string;
+  onUploadComplete?: (fileUrl: string) => void;
+  onUploadError?: (error: any) => void;
 }
 
-const UploadBox: React.FC<UploadBoxProps> = ({ label }) => {
+const UploadBox: React.FC<UploadBoxProps> = ({
+  label,
+  category = "sensitive_document",
+  onUploadComplete,
+  onUploadError
+}) => {
   const cameraRef = useRef<HTMLInputElement | null>(null);
   const galleryRef = useRef<HTMLInputElement | null>(null);
 
   const [open, setOpen] = useState(false);
   const [image, setImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
 
-  const handleFile = (file?: File) => {
-    if (!file) return;
+  const handleFile = async (file?: File) => {
+    console.log("handleFile called with file:", file);
+    if (!file) {
+      console.log("No file provided, returning");
+      return;
+    }
+
+    // Show preview immediately
     const preview = URL.createObjectURL(file);
     setImage(preview);
+    setUploading(true);
+
+    try {
+      const payload = {
+        category: category,
+        files: [
+          {
+            name: file.name,
+            type: file.type
+          }
+        ]
+      };
+
+      console.log("Calling getPreSignedUrlForImage with payload:", payload);
+      const response = await getPreSignedUrlForImage(payload);
+      console.log("getPreSignedUrlForImage response:", response);
+      if (response && response.data && response.data[0]) {
+        const presignedUrlData = response.data[0];
+        const uploadConfig = {
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+          },
+        };
+        await axios.put(presignedUrlData.uploadUrl, file, uploadConfig);
+        const fileUrl = presignedUrlData.keyWithBaseUrl;
+        setUploadedUrl(fileUrl);
+
+        if (onUploadComplete) {
+          onUploadComplete(fileUrl);
+        }
+      } else {
+        throw new Error("Invalid response from presigned URL API");
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      if (onUploadError) {
+        onUploadError(error);
+      }
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <>
       {/* Upload Box */}
       <div
-        onClick={() => setOpen(true)}
-        className="relative h-32 rounded-xl border-2 border-dashed border-gray-300
-                   bg-gray-50 flex items-center justify-center
-                   text-gray-500 text-sm cursor-pointer
-                   hover:border-indigo-400 hover:bg-indigo-50 transition"
+        onClick={() => !uploading && setOpen(true)}
+        className={`relative h-32 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-500 text-sm transition 
+          ${uploading ? 'cursor-wait opacity-60' : 'cursor-pointer hover:border-indigo-400 hover:bg-indigo-50'}
+          `}
       >
         {image ? (
-          <Image
-            height={400}
-            width={400}
-            src={image}
-            alt="preview"
-            className="absolute inset-0 w-full h-full object-cover rounded-xl"
-          />
+          <>
+            <Image
+              height={400}
+              width={400}
+              src={image}
+              alt="preview"
+              className="absolute inset-0 w-full h-full object-cover rounded-xl"
+            />
+            {uploading && (
+              <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
+                <div className="text-white text-sm">Uploading...</div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center">
             <p className="font-medium">{label}</p>
@@ -45,7 +110,7 @@ const UploadBox: React.FC<UploadBoxProps> = ({ label }) => {
           </div>
         )}
 
-        {image && (
+        {image && !uploading && (
           <span className="absolute bottom-1 right-1 text-xs bg-black/60 text-white px-2 py-0.5 rounded">
             Change
           </span>
@@ -60,8 +125,14 @@ const UploadBox: React.FC<UploadBoxProps> = ({ label }) => {
         capture="environment"
         className="hidden"
         onChange={(e) => {
-          handleFile(e.target.files?.[0]);
+          console.log("Camera input onChange triggered, files:", e.target.files);
+          const file = e.target.files?.[0];
+          if (file) {
+            handleFile(file);
+          }
           setOpen(false);
+          // Reset input to allow selecting same file again
+          e.target.value = '';
         }}
       />
 
@@ -71,8 +142,14 @@ const UploadBox: React.FC<UploadBoxProps> = ({ label }) => {
         accept="image/*"
         className="hidden"
         onChange={(e) => {
-          handleFile(e.target.files?.[0]);
+          console.log("Gallery input onChange triggered, files:", e.target.files);
+          const file = e.target.files?.[0];
+          if (file) {
+            handleFile(file);
+          }
           setOpen(false);
+          // Reset input to allow selecting same file again
+          e.target.value = '';
         }}
       />
 

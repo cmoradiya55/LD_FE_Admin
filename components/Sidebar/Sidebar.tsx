@@ -199,9 +199,14 @@ export default function Sidebar({
   }, [activePopup]);
 
   // Check if any submenu item is active for a parent (memoized)
-  const isSubMenuActive = useCallback((parentId: string) => {
+  const isSubMenuActive = useCallback((parentId: string): boolean => {
     const parent = menuItemMap.get(parentId);
-  }, [currentPage, menuItemMap, ]);
+    // If no parent found or no submenu items, return false
+    if (!parent) return false;
+    // TODO: Add submenu check logic if submenus are implemented
+    // For now, return false as there are no submenu items
+    return false;
+  }, [currentPage, menuItemMap]);
 
   // Handle page change and close mobile menu
   const handlePageChange = useCallback((page: string) => {
