@@ -57,7 +57,7 @@ export default function Header({
   const { enableAdvancedAI } = useFlags();
 
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm h-16 sm:h-20 px-3 sm:px-5 py-4 sm:py-8 flex items-center">
+    <header className="bg-white border-b border-gray-200 shadow-sm h-20 px-3 sm:px-5 py-6 sm:py-8 flex items-center">
       <div className="flex w-full items-center justify-between">
         {/* Left Section */}
         <div className="flex items-center space-x-4">
@@ -78,9 +78,9 @@ export default function Header({
                 <Image
                   src="/logo.webp"
                   alt="Logo"
-                  width={80}
-                  height={80}
-                  className="w-12 h-12 sm:w-12 sm:h-12 md:w-12 md:h-12 object-contain"
+                  width={100}
+                  height={100}
+                  className="w-16 h-16 sm:w-16 sm:h-16 md:w-16 md:h-16 object-contain"
                   priority
                 />
                 {/* <h1 className="text-sm sm:text-base font-bold text-gray-900">AdminPro</h1> */}

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import TextInput from "@/components/FormComponent/TextInput";
 import UploadBox from "@/components/common/UploadBox";
-import { getDocumentStatus } from "@/lib/storage";
+import { submitDocumentDetails } from "@/utils/axios/auth";
+import { toast } from "sonner";
 
 const statusConfig: any = {
   1: { label: "Pending Verification", bg: "bg-amber-100", text: "text-amber-700" },
@@ -16,22 +17,74 @@ const statusConfig: any = {
 
 const InspectorDocument = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [documentStatus, setDocumentStatus] = useState<number>(1);
-  const { control, watch, formState: { errors } } = useForm({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [remarks, setRemarks] = useState<string>("");
+  
+  const { control, watch, setValue, formState: { errors } } = useForm({
     defaultValues: { aadhaar: "", pan: "" }
+  });
+
+  const [uploadedFiles, setUploadedFiles] = useState({
+    profilePhoto: "",
+    aadhaarFront: "",
+    aadhaarBack: "",
+    panFront: "",
   });
 
   const aadhaar = watch("aadhaar");
   const pan = watch("pan");
   const isAadhaarValid = aadhaar.length === 12;
-  const isPanValid = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan);
+  const isPanValid = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan?.toUpperCase() || "");
   const status = statusConfig[documentStatus];
 
+  const handleFileUpload = (fileUrl: string, field: keyof typeof uploadedFiles) => {
+    setUploadedFiles((prev) => ({ ...prev, [field]: fileUrl }));
+  };
+
   useEffect(() => {
-    const storedStatus = getDocumentStatus();
-    if (storedStatus !== null) setDocumentStatus(storedStatus);
-    if (storedStatus === 3) router.push("/inspector/inspectorDashboard");
-  }, [router]);
+    const statusParam = searchParams.get("status");
+    if (statusParam) {
+      const status = parseInt(statusParam, 10);
+      setDocumentStatus(status);
+      if (status === 3) {
+        router.push("/inspector/inspectorDashboard");
+      }
+    }
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    if (documentStatus !== 4) return;
+    
+    try {
+      const authData = localStorage.getItem("adminpro-auth");
+      if (!authData) return;
+      
+      const { user } = JSON.parse(authData);
+      if (!user) return;
+      
+      if (user.aadharNumber) {
+        setValue("aadhaar", user.aadharNumber);
+      }
+      if (user.panNumber) {
+        setValue("pan", user.panNumber);
+      }
+      
+      setUploadedFiles({
+        profilePhoto: user.selfieImage || "",
+        aadhaarFront: user.aadharFrontImage || "",
+        aadhaarBack: user.aadharBackImage || "",
+        panFront: user.panImage || "",
+      });
+      
+      if (user.remarks || user.rejectionRemarks) {
+        setRemarks(user.remarks || user.rejectionRemarks);
+      }
+    } catch (error) {
+      console.error("Error loading user document data:", error);
+    }
+  }, [documentStatus, setValue]);
 
   const Header = () => (
     <div className="z-10 bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-5 shadow">
@@ -75,15 +128,80 @@ const InspectorDocument = () => {
     );
   }
 
+  if (documentStatus !== 1 && documentStatus !== 4) return null;
+
+  const handleUpload = async () => {
+    if (!isAadhaarValid || !isPanValid) {
+      toast.error("Please fill all required fields correctly");
+      return;
+    }
+
+    if (!uploadedFiles.profilePhoto || !uploadedFiles.aadhaarFront || !uploadedFiles.aadhaarBack || !uploadedFiles.panFront) {
+      toast.error("Please upload all required documents");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        selfieImage: uploadedFiles.profilePhoto,
+        aadharCardNo: aadhaar,
+        panCardNo: pan.toUpperCase(),
+        aadharCardFrontImage: uploadedFiles.aadhaarFront,
+        aadharCardBackImage: uploadedFiles.aadhaarBack,
+        panCardImage: uploadedFiles.panFront,
+      };
+
+      const response = await submitDocumentDetails(payload);
+
+      if (response && (response.success || response.code === 200)) {
+        toast.success("Documents submitted successfully!");
+        setDocumentStatus(2);
+        router.push("/inspector/document-upload?status=2");
+      } else {
+        throw new Error(response?.message || "Failed to submit documents");
+      }
+    } catch (error: any) {
+      console.error("Error submitting documents:", error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to submit documents. Please try again.";
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <Header />
 
       <div className="max-w-4xl mx-auto px-4 pb-10 space-y-6">
+        {/* Rejection Remarks - Show only when status is 4 */}
+        {documentStatus === 4 && remarks && (
+          <div className="bg-red-50 border-l-4 border-red-500 rounded-2xl p-5 shadow mt-6">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-800 mb-2">Documents Rejected</h3>
+                <p className="text-sm text-red-700 leading-relaxed">{remarks}</p>
+                <p className="text-xs text-red-600 mt-2">Please review the feedback above and resubmit your documents with the necessary corrections.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Profile */}
         <div className="bg-white rounded-2xl p-5 shadow mt-6">
           <h2 className="font-semibold text-gray-800 mb-4">Profile Photo</h2>
-          <UploadBox label="Upload Profile Picture" />
+          <UploadBox 
+            label="Upload Profile Picture" 
+            onUploadComplete={(url) => handleFileUpload(url, "profilePhoto")}
+            existingImage={uploadedFiles.profilePhoto}
+          />
         </div>
 
         {/* Aadhaar */}
@@ -95,7 +213,7 @@ const InspectorDocument = () => {
             label="Aadhaar Number"
             placeholder="Enter Aadhaar Number"
             required
-            error={errors.aadhaar}
+            error={errors.aadhaar as any}
             inputClassName="px-3 py-2 text-sm"
             type="text"
             rules={{
@@ -105,8 +223,16 @@ const InspectorDocument = () => {
           />
           {!isAadhaarValid && aadhaar && <p className="text-xs text-red-500">Aadhaar must be 12 digits</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <UploadBox label="Front Side" />
-            <UploadBox label="Back Side" />
+            <UploadBox 
+              onUploadComplete={(url) => handleFileUpload(url, "aadhaarFront")} 
+              label="Front Side"
+              existingImage={uploadedFiles.aadhaarFront}
+            />
+            <UploadBox 
+              onUploadComplete={(url) => handleFileUpload(url, "aadhaarBack")} 
+              label="Back Side"
+              existingImage={uploadedFiles.aadhaarBack}
+            />
           </div>
         </div>
 
@@ -117,33 +243,54 @@ const InspectorDocument = () => {
             name="pan"
             control={control}
             label="PAN Number"
-            placeholder="Enter PAN Number"
+            placeholder="Enter PAN Number (e.g., ABCDE1234F)"
             required
-            error={errors.pan}
+            error={errors.pan as any}
             inputClassName="px-3 py-2 text-sm uppercase"
             type="text"
             rules={{
               required: "PAN is required",
-              pattern: { value: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, message: "PAN format: ABCDE1234F" },
+              pattern: { 
+                value: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 
+                message: "PAN must be in format: ABCDE1234F (5 letters, 4 digits, 1 letter)" 
+              },
+              maxLength: {
+                value: 10,
+                message: "PAN must be exactly 10 characters"
+              },
+              minLength: {
+                value: 10,
+                message: "PAN must be exactly 10 characters"
+              }
+            }}
+            onChange={(value) => {
+              const upperValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+              setValue("pan", upperValue, { shouldValidate: true });
             }}
           />
-          {!isPanValid && pan && <p className="text-xs text-red-500">PAN format: ABCDE1234F</p>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <UploadBox label="Front Side" />
-            <UploadBox label="Back Side" />
-          </div>
+          {!isPanValid && pan && (
+            <p className="text-xs text-red-500">
+              PAN must be in format: ABCDE1234F (5 uppercase letters, 4 digits, 1 uppercase letter)
+            </p>
+          )}
+          <UploadBox 
+            onUploadComplete={(url) => handleFileUpload(url, "panFront")} 
+            label="PAN Card Photo"
+            existingImage={uploadedFiles.panFront}
+          />
         </div>
 
         {/* Save Button */}
         <div className="bg-white rounded-2xl p-5 shadow">
           <button
-            disabled={!isAadhaarValid || !isPanValid}
-            className={`w-full py-2 rounded-xl font-semibold transition ${isAadhaarValid && isPanValid
-              ? "bg-green-600 text-white hover:bg-green-700"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            disabled={!isAadhaarValid || !isPanValid || isSubmitting}
+            className={`w-full py-2 rounded-xl font-semibold transition ${isAadhaarValid && isPanValid && !isSubmitting
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
+            onClick={handleUpload}
           >
-            Save
+            {isSubmitting ? "Submitting..." : "Save"}
           </button>
         </div>
       </div>

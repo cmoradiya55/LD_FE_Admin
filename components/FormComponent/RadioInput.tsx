@@ -62,7 +62,7 @@ const RadioInput: React.FC<RadioInputProps> = ({
           required: `${label} is required`
         } : undefined)}
         render={({ field }) => (
-          <div className={`flex ${orientation === 'horizontal' ? 'flex-row gap-6' : 'flex-col gap-3'}`}>
+          <div className={`flex ${orientation === 'horizontal' ? 'flex-row flex-wrap gap-6' : 'flex-col gap-3'}`}>
             {options.map((option) => (
               <label
                 key={option.value}

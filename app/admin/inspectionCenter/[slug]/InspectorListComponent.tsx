@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/Button/Button';
 import TextInput from '@/components/FormComponent/TextInput';
 import MobileInput from '@/components/FormComponent/MobileInput';
@@ -12,14 +12,17 @@ import {
     ArrowLeft,
     Users,
     Phone,
-    Mail,
     Plus,
     ShieldCheck,
     MapPin,
     X,
+    FileText,
+    Verified,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createUser, getInspectionCentersData, getInspectorByManager } from '@/utils/axios/auth';
+import { createUser, getInspectorByManager } from '@/utils/axios/auth';
+import OverviewStatCard from '@/components/common/OverviewStatCard';
+import DocumentsPreviewModal from '@/components/DocumentsPreviewModal/DocumentsPreviewModal';
 
 type Inspector = {
     id: number;
@@ -28,7 +31,15 @@ type Inspector = {
     email: string;
     status: 'active' | 'inactive';
     assignedDate: string;
+    city?: string;
     imageUrl?: string;
+    documentStatus?: number;
+    selfieImage?: string | null;
+    aadharFrontImage?: string | null;
+    aadharBackImage?: string | null;
+    panImage?: string | null;
+    aadharNumber?: string | null;
+    panNumber?: string | null;
 };
 
 interface InspectorListComponentProps {
@@ -47,46 +58,13 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
 }) => {
     const router = useRouter();
 
-    const { data: inspectionCentersData } = useQuery({
-        queryKey: ['GET_INSPECTION_CENTERS_DATA'],
-        queryFn: async () => {
-            try {
-                const response = await getInspectionCentersData();
-                if (response?.code === 200 && response?.data) {
-                    return response.data;
-                }
-                return [];
-            } catch (error) {
-                console.error("Error fetching inspection centers data:", error);
-                toast.error("Error fetching inspection centers data");
-                return [];
-            }
-        },
-        retry: false,
-        refetchOnWindowFocus: false,
-    });
-
-    const cityName = useMemo(() => {
-        if (!inspectionCentersData || !managerId) return 'Unknown City';
-        
-        for (const center of inspectionCentersData) {
-            if (center.managers && center.managers.length > 0) {
-                const manager = center.managers.find((m: any) => String(m.id) === String(managerId));
-                if (manager) {
-                    return center.cityName || 'Unknown City';
-                }
-            }
-        }
-        return 'Unknown City';
-    }, [inspectionCentersData, managerId]);
-
-    const { data: inspectorsData, isLoading, isError, refetch: refetchInspectors } = useQuery<Inspector[]>({
+    const { data: inspectorsResponse, isLoading, isError, refetch: refetchInspectors } = useQuery({
         queryKey: ['GET_INSPECTORS_BY_MANAGER', managerId],
         queryFn: async () => {
             try {
                 const response = await getInspectorByManager(managerId);
                 if (response?.code === 200 && response?.data) {
-                    return response.data.map((item: any) => {
+                    const inspectors = response.data.map((item: any) => {
                         let assignedDate = '';
                         if (item.createdAt) {
                             try {
@@ -127,19 +105,31 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                         return {
                             id: item.id,
                             name: item.name || '',
-                            phone: item.countryCode && item.mobileNo 
+                            phone: item.countryCode && item.mobileNo
                                 ? `+${item.countryCode} ${item.mobileNo}`
                                 : '',
                             email: item.email || '',
-                            status: item.isActive !== undefined 
+                            status: item.isActive !== undefined
                                 ? (item.isActive ? 'active' as const : 'inactive' as const)
                                 : 'active' as const,
                             assignedDate: assignedDate,
-                            imageUrl: item.selfie_image || undefined,
+                            city: item.city || '',
+                            documentStatus: item.documentStatus,
+                            selfieImage: item.selfieImage || null,
+                            aadharFrontImage: item.aadharFrontImage || null,
+                            aadharBackImage: item.aadharBackImage || null,
+                            panImage: item.panImage || null,
+                            aadharNumber: item.aadharNumber || null,
+                            panNumber: item.panNumber || null,
                         };
                     });
+
+                    return {
+                        inspectors,
+                        cityName: response.data[0]?.city || 'Unknown City'
+                    };
                 }
-                return [];
+                return { inspectors: [], cityName: 'Unknown City' };
             } catch (error) {
                 console.error("Error fetching inspectors:", error);
                 throw error;
@@ -150,9 +140,11 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
         refetchOnWindowFocus: false,
     });
 
-    const inspectors = inspectorsData || [];
-    const activeCount = inspectors.filter((i) => i.status === 'active').length;
+    const inspectors: Inspector[] = inspectorsResponse?.inspectors || [];
+    const activeCount = inspectors.filter((i: Inspector) => i.status === 'active').length;
     const [isInspectorModalOpen, setIsInspectorModalOpen] = useState(false);
+    const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState(false);
+    const [selectedInspector, setSelectedInspector] = useState<Inspector | null>(null);
 
     const {
         control: inspectorControl,
@@ -177,10 +169,7 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
     };
 
     const onSubmitInspector = async (data: InspectorFormValues) => {
-        if (!managerId) {
-            console.error('No manager ID available');
-            return;
-        }
+        if (!managerId) return;
 
         const payload = {
             roleId: 3,
@@ -192,9 +181,7 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
 
         try {
             const response = await createUser(payload);
-            console.log('Response:', response);
-
-            if (response?.code === 201 || response?.code === 200) {
+            if (response?.code === 201) {
                 await refetchInspectors();
                 resetInspectorForm({
                     name: '',
@@ -209,6 +196,21 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
         }
     };
 
+    const handleViewDocuments = (inspector: Inspector) => {
+        setSelectedInspector(inspector);
+        setIsDocumentsModalOpen(true);
+    };
+
+    const selectedInspectorDocuments = selectedInspector ? {
+        selfieImage: selectedInspector.selfieImage ?? null,
+        aadharFrontImage: selectedInspector.aadharFrontImage ?? null,
+        aadharBackImage: selectedInspector.aadharBackImage ?? null,
+        panImage: selectedInspector.panImage ?? null,
+        aadharNumber: selectedInspector.aadharNumber ?? null,
+        panNumber: selectedInspector.panNumber ?? null,
+        name: selectedInspector.name,
+    } : null;
+
     return (
         <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
             {/* Back Button */}
@@ -216,7 +218,7 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                 variant="outline"
                 size="sm"
                 className="rounded-full px-3 text-[11px]"
-                onClick={() => router.push('/inspectionCenter')}
+                onClick={() => router.push('/admin/inspectionCenter')}
             >
                 <ArrowLeft className="mr-1.5 h-3 w-3" />
                 Back
@@ -230,7 +232,7 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                             Inspector Team
                         </p>
                         <h1 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
-                            {cityName} Inspectors
+                            {inspectorsResponse?.cityName} Inspectors
                         </h1>
                         <p className="mt-1 text-xs text-gray-500 sm:text-sm">
                             Manage and view all inspectors assigned to this inspection center.
@@ -251,59 +253,35 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
 
             {/* Stats Card */}
             <div className="grid gap-4 sm:grid-cols-3">
-                <div className="overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm">
-                    <div className="px-4 py-3 sm:px-5">
-                        <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                                <Users className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                                    Total Inspectors
-                                </p>
-                                <p className="text-lg font-semibold text-gray-900">
-                                    {inspectors.length}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <OverviewStatCard
+                    label="Total Inspectors"
+                    value={inspectors.length}
+                    icon={Users}
+                    background="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
+                    accentCircleColor="rgba(255,255,255,0.2)"
+                    valueClassName="text-lg sm:text-xl md:text-2xl font-semibold tracking-tight"
+                    labelClassName="text-[10px] sm:text-xs font-medium"
+                />
 
-                <div className="overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm">
-                    <div className="px-4 py-3 sm:px-5">
-                        <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                                <ShieldCheck className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                                    Active
-                                </p>
-                                <p className="text-lg font-semibold text-gray-900">
-                                    {activeCount}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <OverviewStatCard
+                    label="Active"
+                    value={activeCount}
+                    icon={ShieldCheck}
+                    background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                    accentCircleColor="rgba(255,255,255,0.2)"
+                    valueClassName="text-lg sm:text-xl md:text-2xl font-semibold tracking-tight"
+                    labelClassName="text-[10px] sm:text-xs font-medium"
+                />
 
-                <div className="overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm">
-                    <div className="px-4 py-3 sm:px-5">
-                        <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600">
-                                <MapPin className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                                    City
-                                </p>
-                                <p className="text-lg font-semibold text-gray-900">
-                                    {cityName}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <OverviewStatCard
+                    label="City"
+                    value={inspectorsResponse?.cityName}
+                    icon={MapPin}
+                    background="linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
+                    accentCircleColor="rgba(255,255,255,0.2)"
+                    valueClassName="text-lg sm:text-xl md:text-2xl font-semibold tracking-tight"
+                    labelClassName="text-[10px] sm:text-xs font-medium"
+                />
             </div>
 
             {/* Inspectors List */}
@@ -333,16 +311,16 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                             Error loading inspectors. Please try again.
                         </div>
                     )}
-                    {!isLoading && !isError && inspectors.map((inspector) => (
+                    {!isLoading && !isError && inspectors.map((inspector: Inspector) => (
                         <div
                             key={inspector.id}
                             className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4"
                         >
                             <div className="flex flex-1 items-start gap-3 sm:items-center">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600 sm:h-11 sm:w-11 overflow-hidden">
-                                    {inspector.imageUrl ? (
+                                    {inspector.selfieImage ? (
                                         <Image
-                                            src={inspector.imageUrl}
+                                            src={inspector.selfieImage}
                                             alt={inspector.name}
                                             width={44}
                                             height={44}
@@ -360,22 +338,12 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                                         <p className="text-sm font-semibold text-gray-900 sm:text-base">
                                             {inspector.name}
                                         </p>
-                                        <span
-                                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold sm:text-xs ${inspector.status === 'active'
-                                                ? 'bg-emerald-50 text-emerald-600'
-                                                : 'bg-amber-50 text-amber-500'
-                                                }`}
-                                        >
-                                            <span
-                                                className={`mr-1.5 h-1.5 w-1.5 rounded-full ${inspector.status === 'active'
-                                                    ? 'bg-emerald-500'
-                                                    : 'bg-amber-500'
-                                                    }`}
-                                            />
-                                            {inspector.status === 'active'
-                                                ? 'Active'
-                                                : 'Inactive'}
-                                        </span>
+                                        {inspector.documentStatus === 3 && (
+                                            <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 rounded-full px-2 py-0.5">
+                                                <Verified className="h-3 w-3 text-green-500" />
+                                                Verified
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 sm:text-xs">
@@ -383,11 +351,30 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                                             <Phone className="h-3 w-3 text-gray-400" />
                                             <span>{inspector.phone}</span>
                                         </span>
+                                        {inspector.city && (
+                                            <span className="inline-flex items-center gap-1">
+                                                <MapPin className="h-3 w-3 text-gray-400" />
+                                                <span>{inspector.city}</span>
+                                            </span>
+                                        )}
                                         <span className="text-gray-400">
                                             Assigned: {inspector.assignedDate}
                                         </span>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Document Verify Button */}
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-full px-3 text-[11px] sm:px-4 sm:text-xs"
+                                    onClick={() => handleViewDocuments(inspector)}
+                                >
+                                    <FileText className="mr-1.5 h-3 w-3" />
+                                    Document Verify
+                                </Button>
                             </div>
                         </div>
                     ))}
@@ -411,7 +398,7 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                         <div className="flex items-center justify-between border-b px-4 py-3 sm:px-5">
                             <div>
                                 <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                                    {cityName}
+                                    {inspectorsResponse?.cityName}
                                 </p>
                                 <h2 className="text-sm font-semibold text-gray-900 sm:text-base">
                                     Add Inspector
@@ -471,6 +458,24 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Documents Modal */}
+            <DocumentsPreviewModal
+                isOpen={isDocumentsModalOpen}
+                onClose={() => {
+                    setIsDocumentsModalOpen(false);
+                    setSelectedInspector(null);
+                }}
+                documents={selectedInspectorDocuments}
+                userId={selectedInspector?.id}
+                documentStatus={selectedInspector?.documentStatus}
+                onAccept={async () => {
+                    await refetchInspectors();
+                }}
+                onReject={async () => {
+                    await refetchInspectors();
+                }}
+            />
         </div>
     );
 };

@@ -324,7 +324,8 @@ export default function Sidebar({
               opacity: activeIndicatorStyle.opacity,
               transform: 'translateZ(0)', // GPU acceleration for smoother animation
             }}
-          />
+          >
+          </div>
         )}
         
         {menuItems.map((item) => {
@@ -396,7 +397,6 @@ export default function Sidebar({
                     </>
                   )}
                 </Button>
-
                 {/* Tooltip for collapsed state */}
                 {collapsed && isExpanded && isHovered && (
                   <div className="absolute left-16 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-50 animate-in fade-in-0 duration-150">

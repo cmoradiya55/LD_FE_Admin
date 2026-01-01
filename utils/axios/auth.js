@@ -5,7 +5,6 @@ const postRequest = async (url, payload,) => {
     const res = await axiosInstance.post(url, payload, {
       withCredentials: true
     });
-    console.log("Response Data-----", res?.data);
     return res?.data;
   } catch (err) {
     console.log("Error Response-----", err);
@@ -64,15 +63,41 @@ export const sendOtp = (payload) => postRequest('/admin/auth/mobile/send-otp', p
 export const verifyOtp = (payload) => postRequest('/admin/auth/mobile/verify-otp', payload);
 export const submitDocumentDetails = (payload) => patchRequest('/admin/auth/documents', payload);
 
+
+
+// Admin
 // User Management APIs
 export const createUser = (payload) => postRequest(`/admin/user-management/create-user`, payload);
 export const getInspectorByManager = (managerId) => getRequest(`/admin/user-management/inspectors/${managerId}`);
+export const verifyDocumentDetails = (payload) => postRequest(`/admin/user-management/verify-documents`, payload);
+
 
 // Inspection Center APIs
 export const getInspectionCentersData = () => getRequest(`/admin/inspection-centre`);
 export const putUpdateInspectionCenter = (payload) => putRequest(`/admin/inspection-centre/${payload.id}`, payload);
 export const getCitySuggestions = (payload) => getRequest(`/admin/inspection-centre/city-suggestions?q=${payload.q}&page=${payload.page}&limit=${payload.limit}&cityId=${payload.cityId}`);
 
+
+
+// Manager
+// User Management APIs
+export const getInspectors = () => getRequest(`/manager/user-management/inspectors`);
+export const patchToggleInspectorStatus = (inspectorId) => patchRequest(`/manager/user-management/inspectors/${inspectorId}/toggle`);
+
+
+// Car List APIs
+export const getManagerUsedCarList = (page, limit) => getRequest(`/manager/used-car?page=${page}&limit=${limit}`);
+export const assignToInspectorOrSelf = (payload) => postRequest(`/manager/used-car/assign-inspector`, payload);
+
+// Inspector
+// Inspection APIs
+export const startInspection = (payload) => postRequest(`/inspector/inspection/start`, payload);
+export const saveInspectionProcess = (id, payload) => postRequest(`/inspector/inspection/save-progress/${id}`, payload);
+export const getInspectorUsedCarList = () => getRequest(`/inspector/inspection/cars`);
+
+
+
+//Common
 // Storage Services APIs
 export const getPreSignedUrlForImage = (payload) => postRequest('/storage/upload-url', payload);
 
