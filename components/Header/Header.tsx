@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  Menu,
   Bell,
   Search,
   Settings,
@@ -74,17 +73,6 @@ export default function Header({
             </Button>
           ) : (
             <>
-
-              {/* Menu Button - visible on mobile/tablet only */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onMobileMenuClick || onToggleSidebar}
-                className="md:hidden p-2"
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
-
               {/* Logo - visible on mobile/tablet */}
               <div className="flex items-center space-x-1.5 sm:space-x-2 lg:hidden">
                 <Image
@@ -97,7 +85,6 @@ export default function Header({
                 />
                 {/* <h1 className="text-sm sm:text-base font-bold text-gray-900">AdminPro</h1> */}
               </div>
-
             </>
           )}
         </div>

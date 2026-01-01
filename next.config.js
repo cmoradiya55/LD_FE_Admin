@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Commented out for dynamic routing to work properly in development
-  // output: 'export',
+  output: 'export',
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { LoadingSpinner } from "../common";
 import { Button } from '@/components/Button/Button';
 import Sidebar from '@/components/Sidebar/Sidebar';
+import BottomBar from '@/components/BottomBar/BottomBar';
 import Header from '@/components/Header/Header';
 
 
@@ -313,16 +314,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar
-        currentPage={getCurrentPage()}
-        onPageChange={handlePageChange}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onLogout={handleLogout}
-        isMobileMenuOpen={isMobileMenuOpen}
-        onCloseMobileMenu={handleMobileMenuClose}
-        roleId={authState.user?.roleId}
-      />
+      {/* Sidebar - Only visible on desktop (lg and above) */}
+      <div className="hidden lg:block">
+        <Sidebar
+          currentPage={getCurrentPage()}
+          onPageChange={handlePageChange}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onLogout={handleLogout}
+          isMobileMenuOpen={false}
+          onCloseMobileMenu={handleMobileMenuClose}
+          roleId={authState.user?.roleId}
+        />
+      </div>
       
       <div className="flex-1 flex flex-col overflow-hidden h-full">
         <Header
@@ -347,12 +351,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {...getBackButtonProps()}
         />
         
-        <main className="flex-1 overflow-y-auto p-4 sm:p-2 md:p-3 lg:p-8 min-h-0 pb-6 sm:pb-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-2 md:p-3 lg:p-8 min-h-0 pb-20 lg:pb-6 sm:pb-8">
           <div className="animate-in fade-in-0 slide-in-from-right-4 duration-500">
             {children}
           </div>
         </main>
       </div>
+      
+      {/* BottomBar - Only visible on mobile (below lg) */}
+      <BottomBar
+        currentPage={getCurrentPage()}
+        onPageChange={handlePageChange}
+        roleId={authState.user?.roleId}
+      />
     </div>
   );
 }
