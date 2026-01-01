@@ -1,13 +1,22 @@
-'use client';
-
-import React from 'react'
-import { useParams } from 'next/navigation';
+import React from 'react';
 import CarDetailsComponent from './CarDetailsComponent';
 import { sampleCars } from '../data';
 
-export default function CarDetailsPage() {
-    const params = useParams();
-    const slug = params?.slug as string;
+// Required for static export with dynamic routes
+export function generateStaticParams() {
+    return sampleCars.map((car) => ({
+        slug: car.id,
+    }));
+}
+
+interface CarDetailsPageProps {
+    params: Promise<{
+        slug: string;
+    }>;
+}
+
+export default async function CarDetailsPage({ params }: CarDetailsPageProps) {
+    const { slug } = await params;
     const car = sampleCars.find(c => c.id === slug);
 
     if (!car) {

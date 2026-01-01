@@ -90,20 +90,10 @@ export function useAuth(): AuthHook {
         mobileNo: mobileNo
       });
 
-      if (response?.code && response?.code >= 400) {
-        const errorMessages = response?.errors?.map((err: any) => err.message).join(', ') ||
-          response?.message ||
-          response?.error ||
-          'Failed to send OTP';
-        toast.error(errorMessages || 'Failed to send OTP');
-        return {
-          success: false,
-          error: errorMessages
-        };
-      }
+      console.log('Send OTP Response:', response);
 
       // Check for success indicators
-      if (response?.success || response?.data || (response?.code && response?.code < 400) || !response?.code) {
+      if (response?.success || response?.data ) {
         return { success: true };
       }
 

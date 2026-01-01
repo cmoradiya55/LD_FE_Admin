@@ -1,12 +1,22 @@
-'use client';
-
 import React from 'react';
-import { useParams } from 'next/navigation';
 import InspectorListComponent from './InspectorListComponent';
 
-export default function InspectorListPage() {
-    const params = useParams();
-    const slug = params?.slug as string; // manager id
+// Required for static export with dynamic routes
+// Since manager IDs come from API, return placeholder
+// Pages will still work client-side with dynamic routing
+export function generateStaticParams() {
+    // Return a placeholder - actual routes will work client-side
+    return [{ slug: 'placeholder' }];
+}
+
+interface InspectorListPageProps {
+    params: Promise<{
+        slug: string;
+    }>;
+}
+
+export default async function InspectorListPage({ params }: InspectorListPageProps) {
+    const { slug } = await params; // manager id
 
     if (!slug) {
         return (

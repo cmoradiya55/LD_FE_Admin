@@ -2,16 +2,14 @@ import axiosInstance, { getUpdatedAuthToken } from "./axios";
 
 const postRequest = async (url, payload,) => {
   try {
-    console.log("url-----", url);
-    console.log("Request Payload-----", JSON.stringify(payload, null, 2));
     const res = await axiosInstance.post(url, payload, {
       withCredentials: true
     });
-    console.log("Response Data-----", JSON.stringify(res?.data, null, 2));
+    console.log("Response Data-----", res?.data);
     return res?.data;
   } catch (err) {
-    console.log("Error Response-----", JSON.stringify(err?.response?.data, null, 2));
-    return err?.response?.data;
+    console.log("Error Response-----", err);
+    return err;
   }
 };
 
@@ -22,8 +20,6 @@ const getRequest = async (url) => {
     });
     return res?.data;
   } catch (err) {
-    console.log("err-----", err);
-    console.log("err?.status-----", err?.status);
     if (err?.status === 401) {
       return getUpdatedAuthToken();
     }
@@ -36,7 +32,6 @@ const putRequest = async (url, payload) => {
     const res = await axiosInstance.put(url, payload, {
       withCredentials: true
     });
-    console.log("res-----", res.data);
     return res?.data;
   } catch (err) {
     return err?.response?.data;
