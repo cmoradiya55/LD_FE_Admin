@@ -29,6 +29,8 @@ export interface CarData {
     newCarPrice?: string;
     views?: string;
     badgeType: 'assured' | 'private'; // 'assured' for LINK DRIVE Assured, 'private' for Private Seller
+    customerExpectedPrice?: string;
+    linkDrivePrice?: string;
 }
 
 export const sampleCars: CarData[] = [

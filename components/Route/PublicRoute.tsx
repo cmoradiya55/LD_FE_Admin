@@ -29,9 +29,9 @@ export default function PublicRoute({ children }: PublicRouteProps) {
         } else if (documentStatus == 2) {
           router.push('/manager/document-upload?status=2'); // documents under review
         } else if (documentStatus == 3) {
-          router.push('/manager/document-upload?status=3'); // documents rejected
-        }else if(documentStatus == 4){
           router.push('/manager/managerDashboard'); // documents approved
+        }else if(documentStatus == 4){
+          router.push('/manager/document-upload?status=4'); // documents rejected
         }
       }
       else if (roleId == 3) {
@@ -40,9 +40,9 @@ export default function PublicRoute({ children }: PublicRouteProps) {
         } else if (documentStatus === 2) {
           router.push('/inspector/document-upload?status=2'); // documents under review
         } else if (documentStatus === 3) {
-          router.push('/inspector/document-upload?status=3'); // documents rejected
-        }else {
           router.push('/inspector/inspectorDashboard'); // documents approved
+        }else {
+          router.push('/inspector/document-upload?status=4'); // documents rejected
         }
       }
     }
