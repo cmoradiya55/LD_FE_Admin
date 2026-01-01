@@ -5,7 +5,6 @@ const postRequest = async (url, payload,) => {
     const res = await axiosInstance.post(url, payload, {
       withCredentials: true
     });
-    console.log("Response Data-----", res?.data);
     return res?.data;
   } catch (err) {
     console.log("Error Response-----", err);

@@ -130,7 +130,7 @@ export default function Sidebar({
         return;
       }
 
-      const activeEl = navRef.current.querySelector([data-menu-id="${currentPage}"]) as HTMLElement | null;
+      const activeEl = navRef.current.querySelector(`[data-menu-id="${currentPage}"]`) as HTMLElement | null;
 
       if (activeEl) {
         const navRect = navRef.current.getBoundingClientRect();
@@ -319,12 +319,13 @@ export default function Sidebar({
             style={{
               left: '8px',
               width: 'calc(100% - 16px)',
-              top: ${activeIndicatorStyle.top}px,
-              height: ${activeIndicatorStyle.height}px,
+              top: `${activeIndicatorStyle.top}px`,
+              height: `${activeIndicatorStyle.height}px`,
               opacity: activeIndicatorStyle.opacity,
               transform: 'translateZ(0)', // GPU acceleration for smoother animation
             }}
-          />
+          >
+          </div>
         )}
         
         {menuItems.map((item) => {
