@@ -93,6 +93,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const managerRouteMap: { [key: string]: string } = {
       'managerDashboard': '/manager/managerDashboard',
       'inspectorList': '/manager/inspectorList',
+      'car': '/manager/carList',
       'carList': '/manager/carList',
       'profile': '/manager/profile',
       'notifications': '/manager/notifications',
@@ -100,6 +101,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
     const inspectorRouteMap: { [key: string]: string } = {
       'inspectorDashboard': '/inspector/inspectorDashboard',
+      'car': '/inspector/carList',
       'carList': '/inspector/carList',
       'profile': '/inspector/profile',
       'notifications': '/inspector/notifications',
@@ -166,14 +168,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     // Manager routes
     const managerRouteMap: { [key: string]: string } = {
       'inspectorList': 'inspectorList',
-      'carList': 'carList',
+      'carList': 'car',
+      'car': 'car',
       'profile': 'profile',
       'notifications': 'notifications',
     };
     
     // Inspector routes
     const inspectorRouteMap: { [key: string]: string } = {
-      'carList': 'carList',
+      'carList': 'car',
+      'car': 'car',
       'profile': 'profile',
       'notifications': 'notifications',
     };

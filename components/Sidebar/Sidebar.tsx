@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/Button/Button';
-import { 
-  LayoutDashboard, 
+import {
+  LayoutDashboard,
   Users,
   LogOut,
-  ChevronLeft, 
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   ChevronUp,
@@ -69,10 +69,10 @@ const getMenuItems = (roleId?: number) => {
   }
 };
 
-export default function Sidebar({ 
-  currentPage, 
-  onPageChange, 
-  collapsed, 
+export default function Sidebar({
+  currentPage,
+  onPageChange,
+  collapsed,
   onToggleCollapse,
   onLogout,
   isMobileMenuOpen = false,
@@ -87,7 +87,7 @@ export default function Sidebar({
     opacity: number;
   }>({ top: 0, height: 44, opacity: 0 });
   const [activePopup, setActivePopup] = useState<string | null>(null);
-  
+
   const navRef = useRef<HTMLElement>(null);
   const rafRef = useRef<number | null>(null);
   const popupRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -149,10 +149,10 @@ export default function Sidebar({
   // Update indicator smoothly when dependencies change
   useEffect(() => {
     updateActiveIndicator();
-    
+
     // Also update after a short delay to handle DOM updates
     const timer = setTimeout(updateActiveIndicator, 100);
-    
+
     return () => {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
@@ -240,12 +240,12 @@ export default function Sidebar({
     <>
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={onCloseMobileMenu}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={cn(
         "bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out shadow-lg h-screen sticky top-0",
@@ -273,7 +273,7 @@ export default function Sidebar({
                 </div>
               )}
             </div>
-            
+
             {/* Collapse button - only on large screens */}
             <Button
               variant="ghost"
@@ -288,7 +288,7 @@ export default function Sidebar({
                 <ChevronLeft className="w-4 h-4" />
               )}
             </Button>
-            
+
             {/* Close button - only on mobile/tablet */}
             {onCloseMobileMenu && (
               <Button
@@ -304,125 +304,159 @@ export default function Sidebar({
           </div>
         </div>
 
-      {/* Navigation */}
-      <nav
-        ref={navRef}
-        className={cn(
-          "flex-1 relative",
-          collapsed ? "lg:p-3 p-2 space-y-1" : "p-2 sm:p-3 lg:p-4 space-y-1 sm:space-y-2 overflow-y-auto scrollbar-hide"
-        )}
-      >
-        {/* Animated Selection Indicator - Only show when not collapsed and on large screens */}
-        {!collapsed && (
-          <div
-            className="absolute bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg transition-all duration-300 ease-out pointer-events-none z-0 hidden lg:block"
-            style={{
-              left: '8px',
-              width: 'calc(100% - 16px)',
-              top: `${activeIndicatorStyle.top}px`,
-              height: `${activeIndicatorStyle.height}px`,
-              opacity: activeIndicatorStyle.opacity,
-              transform: 'translateZ(0)', // GPU acceleration for smoother animation
-            }}
-          >
-          </div>
-        )}
-        
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPage === item.id;
-          const isHovered = hoveredItem === item.id;
-          const isExpanded = expandedItems.has(item.id);
-          const isSubItemActive = isSubMenuActive(item.id);
-
-          return (
+        {/* Navigation */}
+        <nav
+          ref={navRef}
+          className={cn(
+            "flex-1 relative",
+            collapsed ? "lg:p-3 p-2 space-y-1" : "p-2 sm:p-3 lg:p-4 space-y-1 sm:space-y-2 overflow-y-auto scrollbar-hide"
+          )}
+        >
+          {/* Animated Selection Indicator - Only show when not collapsed and on large screens */}
+          {!collapsed && (
             <div
-              key={item.id}
-              className="menu-item-container relative"
-              ref={(el) => {
-                triggerRefs.current[item.id] = el;
+              className="absolute bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg transition-all duration-300 ease-out pointer-events-none z-0 hidden lg:block"
+              style={{
+                left: '8px',
+                width: 'calc(100% - 16px)',
+                top: `${activeIndicatorStyle.top}px`,
+                height: `${activeIndicatorStyle.height}px`,
+                opacity: activeIndicatorStyle.opacity,
+                transform: 'translateZ(0)', // GPU acceleration for smoother animation
               }}
             >
-              {/* Main Menu Item */}
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  data-menu-id={item.id}
-                  className={cn(
-                    "w-full transition-all duration-200 group relative z-10 !bg-transparent !hover:bg-transparent flex items-center text-xs sm:text-sm",
-                    collapsed ? "lg:h-12 h-10 px-1.5 justify-center" : "h-9 sm:h-10 lg:h-11 px-2 sm:px-3 lg:px-4 justify-start",
-                    // Expanded: only the truly active main item turns white (large screens only)
-                    !collapsed && isActive && "lg:text-white text-blue-600 lg:bg-transparent",
-                    // Collapsed: highlight if main or any of its subitems are active (large screens only)
-                    collapsed && isActive && "lg:bg-blue-600 lg:text-white lg:rounded-lg bg-blue-50 text-blue-600 rounded-md",
-                    // Default state
-                    !collapsed && !isActive && "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                  )}
-                  onClick={() => {
-                    handleMenuItemClick(item);
-                    // Close mobile menu when clicking a menu item without subitems
-                    if (onCloseMobileMenu) {
-                      onCloseMobileMenu();
-                    }
-                  }}
-                  onMouseEnter={() => handleMouseEnter(item.id)}
-                  onMouseLeave={handleMouseLeave}
-                  aria-expanded={isExpanded ? isExpanded : undefined}
-                >
-                  <Icon className={cn(
-                    "transition-all duration-200",
-                    collapsed ? "w-4 h-4 sm:w-5 sm:h-5 mx-auto" : "w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3",
-                    collapsed
-                      ? ((isActive) ? "text-blue-600" : "text-gray-600")
-                      : (isActive ? "lg:text-white text-blue-600" : "text-gray-600"),
-                    isHovered && !collapsed && !isActive && "scale-110"
-                  )} />
+            </div>
+          )}
 
-                  
-                  
-                  {!collapsed && (
-                    <>
-                      <span className="font-medium flex-1 text-left self-center">
-                        {item.label}
-                      </span>
-                      {isExpanded && (
-                        <div className="ml-2 transition-transform duration-200 flex items-center">
-                          {isExpanded ? (
-                            <ChevronUp className="w-3 h-3 sm:w-4 sm:h-4" />
-                          ) : (
-                            <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </Button>
-                {/* Tooltip for collapsed state */}
-                {collapsed && isExpanded && isHovered && (
-                  <div className="absolute left-16 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-50 animate-in fade-in-0 duration-150">
-                    Click to open menu
-                  </div>
-                )}
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPage === item.id;
+            const isHovered = hoveredItem === item.id;
+            const isExpanded = expandedItems.has(item.id);
+            const isSubItemActive = isSubMenuActive(item.id);
 
-                {/* Popup for collapsed submenus */}
-                {isExpanded && (
-                  <div
-                    ref={(el) => {
-                      popupRefs.current[item.id] = el;
+            return (
+              <div
+                key={item.id}
+                className="menu-item-container relative"
+                ref={(el) => {
+                  triggerRefs.current[item.id] = el;
+                }}
+              >
+                {/* Main Menu Item */}
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    data-menu-id={item.id}
+                    className={cn(
+                      "w-full transition-all duration-200 group relative z-10 !bg-transparent !hover:bg-transparent flex items-center text-xs sm:text-sm",
+                      collapsed ? "lg:h-12 h-10 px-1.5 justify-center" : "h-9 sm:h-10 lg:h-11 px-2 sm:px-3 lg:px-4 justify-start",
+                      // Expanded: only the truly active main item turns white (large screens only)
+                      !collapsed && isActive && "lg:text-white text-blue-600 lg:bg-transparent",
+                      // Collapsed: highlight if main or any of its subitems are active (large screens only)
+                      collapsed && isActive && "lg:bg-blue-600 lg:text-white lg:rounded-lg bg-blue-50 text-blue-600 rounded-md",
+                      // Default state
+                      !collapsed && !isActive && "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                    )}
+                    onClick={() => {
+                      handleMenuItemClick(item);
+                      // Close mobile menu when clicking a menu item without subitems
+                      if (onCloseMobileMenu) {
+                        onCloseMobileMenu();
+                      }
                     }}
-                    className="absolute left-16 top-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 w-48 py-2 space-y-1"
+                    onMouseEnter={() => handleMouseEnter(item.id)}
+                    onMouseLeave={handleMouseLeave}
+                    aria-expanded={isExpanded ? isExpanded : undefined}
                   >
+                    <Icon className={cn(
+                      "transition-all duration-200",
+                      collapsed ? "w-4 h-4 sm:w-5 sm:h-5 mx-auto" : "w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3",
+                      collapsed
+                        ? ((isActive) ? "text-blue-600" : "text-gray-600")
+                        : (isActive ? "lg:text-white text-blue-600" : "text-gray-600"),
+                      isHovered && !collapsed && !isActive && "scale-110"
+                    )} />
+
+
+
+                    {!collapsed && (
+                      <>
+                        <span className="font-medium flex-1 text-left self-center">
+                          {item.label}
+                        </span>
+                        {isExpanded && (
+                          <div className="ml-2 transition-transform duration-200 flex items-center">
+                            {isExpanded ? (
+                              <ChevronUp className="w-3 h-3 sm:w-4 sm:h-4" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </Button>
+                  {/* Tooltip for collapsed state */}
+                  {collapsed && isExpanded && isHovered && (
+                    <div className="absolute left-16 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-50 animate-in fade-in-0 duration-150">
+                      Click to open menu
+                    </div>
+                  )}
+
+                  {/* Popup for collapsed submenus */}
+                  {isExpanded && (
+                    <div
+                      ref={(el) => {
+                        popupRefs.current[item.id] = el;
+                      }}
+                      className="absolute left-16 top-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 w-48 py-2 space-y-1"
+                    >
                       <Button
+                        variant="ghost"
+                        className={cn(
+                          "w-full justify-start h-9 px-4 text-sm !bg-transparent",
+                          isActive ? "text-blue-600 font-semibold bg-blue-50" : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                        )}
+                        onClick={() => handleMenuItemClick(item)}
+                      >
+                        <Icon className={cn(
+                          "w-4 h-4 mr-3",
+                          isActive ? "text-blue-600" : "text-gray-500"
+                        )} />
+                        <span className="font-medium">
+                          {item.label}
+                        </span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sub Menu Items */}
+                {!collapsed && isExpanded && (
+                  <div className="submenu-container ml-4 sm:ml-6 mt-1 space-y-1 animate-in slide-in-from-top-2 fade-in-0 duration-200">
+                    <Button
                       variant="ghost"
+                      data-menu-id={item.id}
                       className={cn(
-                        "w-full justify-start h-9 px-4 text-sm !bg-transparent",
-                        isActive ? "text-blue-600 font-semibold bg-blue-50" : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                        "w-full justify-start h-8 sm:h-9 transition-all duration-200 relative z-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm group !bg-transparent",
+                        isActive
+                          ? "lg:text-white text-blue-600 font-semibold lg:bg-transparent bg-blue-50"
+                          : "text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
                       )}
-                      onClick={() => handleMenuItemClick(item)}
+                      onClick={() => {
+                        handlePageChange(item.id);
+                        if (onCloseMobileMenu) {
+                          onCloseMobileMenu();
+                        }
+                      }}
+                      onMouseEnter={() => handleMouseEnter(item.id)}
+                      onMouseLeave={handleMouseLeave}
                     >
                       <Icon className={cn(
-                        "w-4 h-4 mr-3",
-                        isActive ? "text-blue-600" : "text-gray-500"
+                        "w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2 sm:mr-3 transition-all duration-200",
+                        isActive ? "lg:text-white text-blue-600" : "text-gray-500 group-hover:text-gray-700",
+                        isHovered && !isActive && "scale-110"
                       )} />
                       <span className="font-medium">
                         {item.label}
@@ -431,75 +465,41 @@ export default function Sidebar({
                   </div>
                 )}
               </div>
+            );
+          })}
+        </nav>
 
-              {/* Sub Menu Items */}
-              {!collapsed && isExpanded && (
-                <div className="submenu-container ml-4 sm:ml-6 mt-1 space-y-1 animate-in slide-in-from-top-2 fade-in-0 duration-200">
-                  <Button
-                    variant="ghost"
-                    data-menu-id={item.id}
-                        className={cn(
-                          "w-full justify-start h-8 sm:h-9 transition-all duration-200 relative z-10 px-2 sm:px-3 lg:px-4 text-xs sm:text-sm group !bg-transparent",
-                          isActive
-                            ? "lg:text-white text-blue-600 font-semibold lg:bg-transparent bg-blue-50"
-                            : "text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
-                        )}
-                        onClick={() => {
-                          handlePageChange(item.id);
-                          if (onCloseMobileMenu) {
-                            onCloseMobileMenu();
-                          }
-                        }}
-                        onMouseEnter={() => handleMouseEnter(item.id)}
-                        onMouseLeave={handleMouseLeave}
-                      >
-                        <Icon className={cn(
-                          "w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2 sm:mr-3 transition-all duration-200",
-                          isActive ? "lg:text-white text-blue-600" : "text-gray-500 group-hover:text-gray-700",
-                          isHovered && !isActive && "scale-110"
-                        )} />
-                        <span className="font-medium">
-                          {item.label}
-                        </span>
-                      </Button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </nav>
-
-      {/* Logout Button */}
-      <div className="p-2 sm:p-3 lg:p-4 border-t border-gray-200">
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full text-red-600 hover:text-red-700 hover:bg-red-50 transition-all duration-200 flex items-center text-xs sm:text-sm",
-            collapsed ? "lg:h-10 h-9 px-1.5 justify-center" : "h-9 sm:h-10 lg:h-11 px-2 sm:px-3 lg:px-4 justify-start"
-          )}
-          onClick={() => {
-            onLogout();
-            if (onCloseMobileMenu) {
-              onCloseMobileMenu();
-            }
-          }}
-          onMouseEnter={() => handleMouseEnter('logout')}
-          onMouseLeave={handleMouseLeave}
-          aria-label="Logout"
-        >
-          <LogOut className={cn(
-            "transition-all duration-200",
-            collapsed ? "w-4 h-4 sm:w-5 sm:h-5 mx-auto" : "w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3",
-            hoveredItem === 'logout' && "scale-110"
-          )} />
-          {!collapsed && (
-            <span className="font-medium">
-              Logout
-            </span>
-          )}
-        </Button>
+        {/* Logout Button */}
+        <div className="p-2 sm:p-3 lg:p-4 border-t border-gray-200">
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full text-red-600 hover:text-red-700 hover:bg-red-50 transition-all duration-200 flex items-center text-xs sm:text-sm",
+              collapsed ? "lg:h-10 h-9 px-1.5 justify-center" : "h-9 sm:h-10 lg:h-11 px-2 sm:px-3 lg:px-4 justify-start"
+            )}
+            onClick={() => {
+              onLogout();
+              if (onCloseMobileMenu) {
+                onCloseMobileMenu();
+              }
+            }}
+            onMouseEnter={() => handleMouseEnter('logout')}
+            onMouseLeave={handleMouseLeave}
+            aria-label="Logout"
+          >
+            <LogOut className={cn(
+              "transition-all duration-200",
+              collapsed ? "w-4 h-4 sm:w-5 sm:h-5 mx-auto" : "w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3",
+              hoveredItem === 'logout' && "scale-110"
+            )} />
+            {!collapsed && (
+              <span className="font-medium">
+                Logout
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
-    </div>
     </>
   );
 }

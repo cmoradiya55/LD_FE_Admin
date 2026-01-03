@@ -50,23 +50,24 @@ const CarListComponent = () => {
 
 
     const handleStartInspection = async (car: CarData & { vehicleId?: number }) => {
-        // setLoadingCarId(car.id);
-        // try {
-        //     const vehicleId = car.vehicleId || parseInt(car.id, 10);
-        //     const response = await startInspection({ vehicleId });
-            
-        //     if (response?.code === 200) {
+        setLoadingCarId(car.id);
+        try {
+            const vehicleId = car.vehicleId;
+            const response = await startInspection({ vehicleId });
+            console.log("vehicleId-----", vehicleId);
+            console.log("response-----", response);
+            if (response?.code === 200) {
                 router.push(`/inspector/carInspection?carId=${car.id}`);
-        //     } else {
-        //         console.error("Failed to start inspection:", response?.message || "Unknown error");
-        //         toast.error(response?.message || "Failed to start inspection");
-        //     }
-        // } catch (error) {
-        //     console.error("Error starting inspection:", error);
-        //     toast.error("An error occurred while starting inspection");
-        // } finally {
-        //     setLoadingCarId(null);
-        // }
+            } else {
+                console.error("Failed to start inspection:", response?.message || "Unknown error");
+                toast.error(response?.message || "Failed to start inspection");
+            }
+        } catch (error) {
+            console.error("Error starting inspection:", error);
+            toast.error("An error occurred while starting inspection");
+        } finally {
+            setLoadingCarId(null);
+        }
     };
 
     const { data: carsResponse, isLoading, isError } = useQuery({
