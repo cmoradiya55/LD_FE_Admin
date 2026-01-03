@@ -2,11 +2,16 @@ import React from 'react';
 import InspectorListComponent from './InspectorListComponent';
 
 // Required for static export with dynamic routes
-// Since manager IDs come from API, return placeholder
+// Since manager IDs come from API, return common IDs
 // Pages will still work client-side with dynamic routing
 export function generateStaticParams() {
-    // Return a placeholder - actual routes will work client-side
-    return [{ slug: 'placeholder' }];
+    // Return common manager IDs that might be accessed
+    // Add more IDs as needed or fetch from API if possible at build time
+    const commonSlugs = ['1', '2', '3', '4', '5', 'placeholder'];
+    
+    return commonSlugs.map((slug) => ({
+        slug: slug,
+    }));
 }
 
 interface InspectorListPageProps {

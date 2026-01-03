@@ -92,7 +92,7 @@ export const assignToInspectorOrSelf = (payload) => postRequest(`/manager/used-c
 // Inspector
 // Inspection APIs
 export const startInspection = (payload) => postRequest(`/inspector/inspection/start`, payload);
-export const saveInspectionProcess = (id, payload) => postRequest(`/inspector/inspection/save-progress/${id}`, payload);
+export const saveInspectionProcess = (id, payload) => postRequest(`/inspector/inspection/${id}/progress`, payload);
 export const getInspectorUsedCarList = () => getRequest(`/inspector/inspection/cars`);
 
 

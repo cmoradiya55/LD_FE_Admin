@@ -74,8 +74,8 @@ const TextArea: React.FC<TextAreaProps> = ({
               disabled 
                 ? 'bg-slate-100 border-slate-300 text-slate-500 cursor-not-allowed' 
                 : error 
-                  ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-100' 
-                  : 'border-slate-200 bg-slate-50/50 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:bg-white'
+                  ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-1 focus:ring-red-100' 
+                  : 'border-slate-200 bg-slate-50/50 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 focus:bg-white'
             } ${inputClassName}`}
           />
         )}
