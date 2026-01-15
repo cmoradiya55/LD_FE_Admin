@@ -2,14 +2,16 @@
 import { OverviewStatCard, PageHeader, LoadingSpinner } from '@/components/common';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Car, CarFront, Clock3, CheckCircle2, UserCheck, Phone, ArrowRight, X, User, UserRound, Filter, List, UserX, Hourglass, CheckCircle } from 'lucide-react';
-import { CarData } from '@/app/admin/car/data';
+import { Car, CarFront, Clock3, CheckCircle2, UserCheck, UserRound, Filter, FileText } from 'lucide-react';
+import { CarData } from '@/lib/CarData';
 import CarCard from '@/components/car/CarCard';
-import { getManagerUsedCarList, getInspectors, assignToInspectorOrSelf } from '@/utils/axios/auth';
+import { getInspectors, assignToInspectorOrSelf, getCarListForManager } from '@/utils/axios/auth';
 import { Button } from '@/components/Button/Button';
-import Image from 'next/image';
 import { toast } from 'sonner';
 import { KilometerDriven, OwnerType, UsedCarListingStatus } from "@/lib/data";
+import { useRouter } from "next/navigation";
+import AssignInspectorDialog from '@/app/manager/component/AssignInspectorDialog';
+import InspectionReportDialog from '@/components/InspectionReport/ViewAllInspectionReport';
 
 const carsOverviewCardConfig = [
     { label: "Total Cars", icon: Car, background: "linear-gradient(135deg, #4b6bfb 0%, #3b82f6 100%)", accentCircleColor: "rgba(255,255,255,0.4)" },
@@ -49,7 +51,7 @@ const getOwnerTypeLabel = (value: OwnerType): string => {
     return ownerTypeMap[value] || '';
 };
 
-type Inspector = {
+export type Inspector = {
     id: number;
     managerId: number;
     name: string;
@@ -60,9 +62,10 @@ type Inspector = {
     documentStatusName?: string;
 };
 
-type FilterType = 'all' | 'assigned' | 'notAssigned' | 'inspectionPending' | 'inspectionCompleted';
+type FilterType = 'all' | 'assigned' | 'notAssigned' | 'inspectionPending' | 'inspectionCompleted' | 'detailsUpdated' | 'approvedByManager' | 'approvedByAdmin';
 
 const CarListComponent = () => {
+    const router = useRouter();
     const [currentPage, setCurrentPage] = useState(1);
     const [allCars, setAllCars] = useState<(CarData & { inspectorId?: number; status?: number; inspector?: { id: number; name: string; mobileNumber: string; role: number; roleLabel: string } | null })[]>([]);
     const [hasMore, setHasMore] = useState(true);
@@ -72,11 +75,12 @@ const CarListComponent = () => {
     const [selectedCar, setSelectedCar] = useState<CarData | null>(null);
     const [selectedInspector, setSelectedInspector] = useState<Inspector | null>(null);
     const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+    const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
 
     const { data: carsResponse, isLoading, isError, refetch: refetchCars } = useQuery({
         queryKey: ['GET_MANAGER_USED_CAR_LIST', currentPage],
         queryFn: async () => {
-            const response = await getManagerUsedCarList(currentPage, PAGE_SIZE);
+            const response = await getCarListForManager(currentPage, PAGE_SIZE);
             if (response?.code === 200 && response?.data) {
                 const cars: (CarData & { inspectorId?: number; status?: number; inspector?: { id: number; name: string; mobileNumber: string; role: number; roleLabel: string } | null })[] = response.data.map((item: any) => ({
                     id: item.id?.toString() || '',
@@ -95,6 +99,7 @@ const CarListComponent = () => {
                     inspector: item.inspector || null,
                     customerExpectedPrice: item.customerExpectedPrice > 0 ? `₹${item.customerExpectedPrice}` : "₹ 0 /-",
                     linkDrivePrice: item.linkDrivePrice > 0 ? `₹${item.linkDrivePrice}` : "₹ 0 /-",
+                    managerSuggestedPrice: item.managerSuggestedPrice > 0 ? `₹${item.managerSuggestedPrice.toLocaleString('en-IN')}` : undefined,
                 }));
 
                 const meta = response.meta || {};
@@ -142,6 +147,7 @@ const CarListComponent = () => {
         (inspectorsResponse || []).filter((i: Inspector) => i.isActive && (i.documentStatus === 3 || i.documentStatusName === 'Verified')), [inspectorsResponse]
     );
 
+
     useEffect(() => {
         if (!carsResponse) return;
         setAllCars(prev => currentPage === 1 ? carsResponse.cars : [...prev, ...carsResponse.cars]);
@@ -157,15 +163,21 @@ const CarListComponent = () => {
 
             switch (activeFilter) {
                 case 'assigned':
-                    return status === UsedCarListingStatus.INSPECTOR_ASSIGNED || car.inspectorId;
+                    return status === UsedCarListingStatus.INSPECTOR_ASSIGNED || car.inspectorId; //200
                 case 'notAssigned':
-                    return status === UsedCarListingStatus.PENDING && !car.inspectorId;
+                    return status === UsedCarListingStatus.PENDING && !car.inspectorId; //100
                 case 'inspectionPending':
                     return (status === UsedCarListingStatus.INSPECTOR_ASSIGNED ||
                         status === UsedCarListingStatus.INSPECTION_STARTED) &&
-                        status !== UsedCarListingStatus.INSPECTION_COMPLETED;
+                        status !== UsedCarListingStatus.INSPECTION_COMPLETED; //300
                 case 'inspectionCompleted':
-                    return status === UsedCarListingStatus.INSPECTION_COMPLETED;
+                    return status === UsedCarListingStatus.INSPECTION_COMPLETED; //400
+                case 'detailsUpdated':
+                    return status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF; //500
+                case 'approvedByManager':
+                    return status === UsedCarListingStatus.APPROVED_BY_MANAGER; //600
+                case 'approvedByAdmin':
+                    return status === UsedCarListingStatus.APPROVED_BY_ADMIN; //700 
                 default:
                     return true;
             }
@@ -323,18 +335,21 @@ const CarListComponent = () => {
                     </div>
                     <span className="text-sm font-semibold text-gray-800">Filter Cars</span>
                 </div>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                     {[
                         { key: 'all' as FilterType, label: 'All Cars' },
                         { key: 'assigned' as FilterType, label: 'Assigned' },
                         { key: 'notAssigned' as FilterType, label: 'Not Assigned' },
                         { key: 'inspectionPending' as FilterType, label: 'Inspection Pending' },
                         { key: 'inspectionCompleted' as FilterType, label: 'Inspection Completed' },
+                        { key: 'detailsUpdated' as FilterType, label: 'Details Updated by Staff' },
+                        { key: 'approvedByManager' as FilterType, label: 'Approved (Manager)' },
+                        { key: 'approvedByAdmin' as FilterType, label: 'Approved (Admin)' },
                     ].map((filter) => (
                         <button
                             key={filter.key}
                             onClick={() => setActiveFilter(filter.key)}
-                            className={`px-1 py-1 rounded-lg text-[11px] font-medium transition-all duration-200 text-center shadow-md ${activeFilter === filter.key
+                            className={`px-1 py-1 rounded-lg text-[10px] sm:text-[11px] font-medium transition-all duration-200 text-center shadow-md ${activeFilter === filter.key
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-50 text-gray-700 border border-gray-200'
                                 }`}
@@ -360,64 +375,179 @@ const CarListComponent = () => {
                 ) : (
                     <>
                         <div className="grid grid-cols-1 gap-4">
-                            {filteredCars.map((car) => (
-                                <div key={car.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-lg">
-                                    <CarCard car={car} showStatusBadge={true} statusBadgeText="Active" />
-                                    {(car as any).inspector && (
-                                        <div className="px-4 pt-2 pb-2">
-                                            <div className="flex items-center gap-2 px-1.5 py-1 bg-blue-50 border border-blue-200 rounded-lg">
-                                                <UserCheck className="h-3 w-3 text-blue-600 flex-shrink-0" />
-                                                <span className="text-[11px] font-medium text-blue-700">
-                                                    Assigned to: {(car as any).inspector.name}
-                                                </span>
+                            {filteredCars.map((car) => {
+                                const status = car.status;
+                                const statusBadgeText =
+                                    status === UsedCarListingStatus.APPROVED_BY_ADMIN
+                                        ? "Approved by Admin"
+                                        : status === UsedCarListingStatus.APPROVED_BY_MANAGER
+                                            ? "Approved by Manager"
+                                            : status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
+                                                ? "Details Updated by Staff"
+                                                : status === UsedCarListingStatus.INSPECTION_COMPLETED
+                                        ? "Inspection Completed"
+                                        : status === UsedCarListingStatus.INSPECTION_STARTED ||
+                                            status === UsedCarListingStatus.INSPECTOR_ASSIGNED
+                                            ? "Inspection Pending"
+                                            : status === UsedCarListingStatus.PENDING && !car.inspectorId
+                                                ? "Not Assigned"
+                                                : "Assigned";
+
+                                return (
+                                    <div key={car.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-lg">
+                                        <CarCard
+                                            car={car}
+                                            showStatusBadge={true}
+                                            statusBadgeText={statusBadgeText}
+                                        />
+                                        {(car as any).inspector && (
+                                            <div className="px-4 pt-2 pb-2">
+                                                <div className={`flex items-center gap-2 px-1.5 py-1 border rounded-lg ${car.status === UsedCarListingStatus.APPROVED_BY_ADMIN
+                                                        ? 'bg-purple-50 border-purple-200'
+                                                        : car.status === UsedCarListingStatus.APPROVED_BY_MANAGER
+                                                            ? 'bg-indigo-50 border-indigo-200'
+                                                            : car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
+                                                                ? 'bg-amber-50 border-amber-200'
+                                                                : car.status === UsedCarListingStatus.INSPECTION_COMPLETED
+                                                    ? 'bg-emerald-50 border-emerald-200'
+                                                    : 'bg-blue-50 border-blue-200'
+                                                    }`}>
+                                                    <UserCheck
+                                                        className={`h-3 w-3 flex-shrink-0 ${car.status === UsedCarListingStatus.APPROVED_BY_ADMIN
+                                                                ? 'text-purple-600'
+                                                                : car.status === UsedCarListingStatus.APPROVED_BY_MANAGER
+                                                                    ? 'text-indigo-600'
+                                                                    : car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
+                                                                        ? 'text-amber-600'
+                                                                        : car.status === UsedCarListingStatus.INSPECTION_COMPLETED
+                                                            ? 'text-emerald-600'
+                                                            : 'text-blue-600'
+                                                            }`}
+                                                    />
+                                                    <span className={`text-[11px] font-medium ${car.status === UsedCarListingStatus.APPROVED_BY_ADMIN
+                                                            ? 'text-purple-700'
+                                                            : car.status === UsedCarListingStatus.APPROVED_BY_MANAGER
+                                                                ? 'text-indigo-700'
+                                                                : car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
+                                                                    ? 'text-amber-700'
+                                                                    : car.status === UsedCarListingStatus.INSPECTION_COMPLETED
+                                                        ? 'text-emerald-700'
+                                                        : 'text-blue-700'
+                                                        }`}>
+                                                        {car.status === UsedCarListingStatus.APPROVED_BY_ADMIN ||
+                                                            car.status === UsedCarListingStatus.APPROVED_BY_MANAGER ||
+                                                            car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF ||
+                                                            car.status === UsedCarListingStatus.INSPECTION_COMPLETED
+                                                            ? 'Inspection by: '
+                                                            : 'Assigned to: '}
+                                                        {(car as any).inspector.name}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {/* Buttons based on status */}
-                                    {car.status === UsedCarListingStatus.INSPECTOR_ASSIGNED && (car as any).inspector && (
-                                        <div className="px-4 pb-4 flex gap-2">
-                                            <Button
-                                                onClick={() => handleAssignClick(car)}
-                                                variant="primary"
-                                                className="flex-1 flex items-center justify-center gap-2 text-[11px]"
-                                            >
-                                                <UserCheck className="h-3.5 w-3.5" />
-                                                Assign to Other
-                                            </Button>
-                                            <Button
-                                                onClick={() => handleAssignToSelf(car)}
-                                                variant="secondary"
-                                                className="flex-1 flex items-center justify-center gap-2 text-[11px]"
-                                            >
-                                                <UserRound className="h-3.5 w-3.5" />
-                                                Assign to Self
-                                            </Button>
-                                        </div>
-                                    )}
+                                        {/* Buttons based on status */}
+                                        {car.status === UsedCarListingStatus.INSPECTOR_ASSIGNED && (car as any).inspector && (
+                                            <div className="px-4 pb-4 flex gap-2">
+                                                <Button
+                                                    onClick={() => handleAssignClick(car)}
+                                                    variant="primary"
+                                                    className="flex-1 flex items-center justify-center gap-2 text-[11px]"
+                                                >
+                                                    <UserCheck className="h-3.5 w-3.5" />
+                                                    Assign to Other
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleAssignToSelf(car)}
+                                                    variant="secondary"
+                                                    className="flex-1 flex items-center justify-center gap-2 text-[11px]"
+                                                >
+                                                    <UserRound className="h-3.5 w-3.5" />
+                                                    Assign to Self
+                                                </Button>
+                                            </div>
+                                        )}
 
-                                    {car.status === UsedCarListingStatus.PENDING && !(car as any).inspector && (
-                                        <div className="px-4 pb-4 flex gap-2">
-                                            <Button
-                                                onClick={() => handleAssignClick(car)}
-                                                variant="primary"
-                                                className="flex-1 flex items-center justify-center gap-2 text-[11px]"
-                                            >
-                                                <UserCheck className="h-3.5 w-3.5" />
-                                                Assign Inspector
-                                            </Button>
-                                            <Button
-                                                onClick={() => handleAssignToSelf(car)}
-                                                variant="secondary"
-                                                className="flex-1 flex items-center justify-center gap-2 text-[11px]"
-                                            >
-                                                <UserRound className="h-3.5 w-3.5" />
-                                                Assign to Self
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                        {/* Assign Inspector and Assign to Self */}
+                                        {car.status === UsedCarListingStatus.PENDING && !(car as any).inspector && (
+                                            <div className="px-4 pb-4 flex gap-2">
+                                                <Button
+                                                    onClick={() => handleAssignClick(car)}
+                                                    variant="primary"
+                                                    className="flex-1 flex items-center justify-center gap-2 text-[11px]"
+                                                >
+                                                    <UserCheck className="h-3.5 w-3.5" />
+                                                    Assign Inspector
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleAssignToSelf(car)}
+                                                    variant="secondary"
+                                                    className="flex-1 flex items-center justify-center gap-2 text-[11px]"
+                                                >
+                                                    <UserRound className="h-3.5 w-3.5" />
+                                                    Assign to Self
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {/* View Inspection Report */}
+                                        {car.status === UsedCarListingStatus.INSPECTION_COMPLETED && (
+                                            <div className="px-4 pt-2 pb-4">
+                                                <Button
+                                                    onClick={() => setSelectedCarId(car.id)}
+                                                    variant="primary"
+                                                    className="w-full flex items-center justify-center gap-2 text-[11px]"
+                                                >
+                                                    <FileText className="h-3.5 w-3.5" />
+                                                    View Inspection Report
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {/* Approve Inspection Report */}
+                                        {car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF && (
+                                            <div className="px-4 pt-2 pb-4">
+                                                <Button
+                                                    onClick={() => setSelectedCarId(car.id)}
+                                                    variant="primary"
+                                                    className="w-full flex items-center justify-center gap-2 text-[11px]"
+                                                >
+                                                    <FileText className="h-3.5 w-3.5" />
+                                                    Approve Inspection Report
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {/* View Approved Report */}
+                                        {car.status === UsedCarListingStatus.APPROVED_BY_MANAGER && (
+                                            <div className="px-4 pt-2 pb-4">
+                                                <Button
+                                                    onClick={() => setSelectedCarId(car.id)}
+                                                    variant="primary"
+                                                    className="w-full flex items-center justify-center gap-2 text-[11px] bg-indigo-600 hover:bg-indigo-700"
+                                                >
+                                                    <FileText className="h-3.5 w-3.5" />
+                                                    View Approved Report
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {/* View Final Report */}
+                                        {car.status === UsedCarListingStatus.APPROVED_BY_ADMIN && (
+                                            <div className="px-4 pt-2 pb-4">
+                                                <Button
+                                                    onClick={() => setSelectedCarId(car.id)}
+                                                    variant="primary"
+                                                    className="w-full flex items-center justify-center gap-2 text-[11px] bg-purple-600 hover:bg-purple-700"
+                                                >
+                                                    <FileText className="h-3.5 w-3.5" />
+                                                    View Final Report
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
                         </div>
                         {hasMore && (
                             <div ref={loadMoreRef} className="mt-4 h-8 flex items-center justify-center text-xs text-gray-500">
@@ -433,115 +563,26 @@ const CarListComponent = () => {
                 )}
             </div>
 
-            {isAssignDialogOpen && (
-                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end justify-center p-4" onClick={handleCloseDialog}>
-                    <div className="bg-white w-full sm:w-96 max-h-[90vh] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xl font-bold text-white">Assign Inspector</h3>
-                                <button onClick={handleCloseDialog} className="text-white bg-white/10 p-1.5 rounded-full">
-                                    <X className="h-5 w-5" />
-                                </button>
-                            </div>
-                            {selectedCar && (
-                                <div className="mt-4 flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl p-3">
-                                    <div className="h-14 w-14 rounded-lg overflow-hidden bg-white flex-shrink-0">
-                                        <Image src={selectedCar.image} alt={selectedCar.name} width={56} height={56} className="object-cover w-full h-full" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="text-sm font-semibold text-white truncate">{selectedCar.name}</h4>
-                                        <p className="text-xs text-white/80">{selectedCar.price}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6">
-                            {isLoadingInspectors ? (
-                                <div className="flex items-center justify-center min-h-[200px]">
-                                    <div className="flex flex-col items-center gap-4">
-                                        <LoadingSpinner size="lg" />
-                                        <p className="text-slate-600 text-sm">Loading inspectors...</p>
-                                    </div>
-                                </div>
-                            ) : isInspectorsError ? (
-                                <div className="flex flex-col items-center justify-center min-h-[200px] text-center">
-                                    <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
-                                        <UserCheck className="h-8 w-8 text-red-500" />
-                                    </div>
-                                    <p className="text-sm font-medium text-slate-700">Error loading inspectors</p>
-                                    <p className="text-xs text-slate-500 mt-1">Please try again later</p>
-                                </div>
-                            ) : activeInspectors.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center min-h-[200px] text-center">
-                                    <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                                        <UserCheck className="h-8 w-8 text-slate-400" />
-                                    </div>
-                                    <p className="text-sm font-medium text-slate-700">No verified inspectors available</p>
-                                    <p className="text-xs text-slate-500 mt-1">Check back later</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Select Inspector</p>
-                                    {activeInspectors.map((inspector: Inspector) => {
-                                        const isSelected = selectedInspector?.id === inspector.id;
-                                        return (
-                                            <div
-                                                key={inspector.id}
-                                                onClick={() => handleInspectorSelect(inspector)}
-                                                className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-slate-200 bg-white hover:border-blue-300'
-                                                    }`}
-                                            >
-                                                <div className={`h-14 w-14 rounded-full overflow-hidden flex-shrink-0 ring-2 ${isSelected ? 'ring-blue-500' : 'ring-slate-200'}`}>
-                                                    {inspector.imageUrl ? (
-                                                        <Image src={inspector.imageUrl} alt={inspector.name} width={56} height={56} className="object-cover w-full h-full" />
-                                                    ) : (
-                                                        <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
-                                                            <span className="text-base font-bold text-white">
-                                                                {inspector.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className={`text-base font-semibold truncate ${isSelected ? 'text-blue-900' : 'text-slate-900'}`}>{inspector.name}</h3>
-                                                    <p className="text-sm text-slate-600 truncate flex items-center gap-1.5 mt-1">
-                                                        <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-                                                        {inspector.phone}
-                                                    </p>
-                                                </div>
-                                                <div className="flex-shrink-0">
-                                                    {isSelected ? (
-                                                        <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center">
-                                                            <CheckCircle2 className="h-4 w-4 text-white" />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center">
-                                                            <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                        {selectedInspector && (
-                            <div className="border-t border-slate-200 bg-slate-50/50 p-4">
-                                <div className="flex gap-3">
-                                    <Button variant="outline" onClick={handleCloseDialog} className="flex-1">
-                                        Cancel
-                                    </Button>
-                                    <Button variant="primary" onClick={handleAssignInspection} className="flex-1">
-                                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                                        Assign
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+            {/* Assign Inspector Dialog */}
+            <AssignInspectorDialog
+                isOpen={isAssignDialogOpen}
+                onClose={handleCloseDialog}
+                selectedCar={selectedCar}
+                selectedInspector={selectedInspector}
+                onInspectorSelect={handleInspectorSelect}
+                onAssign={handleAssignInspection}
+                isLoadingInspectors={isLoadingInspectors}
+                isInspectorsError={isInspectorsError}
+                activeInspectors={activeInspectors}
+            />
+
+            {/* Inspection Report Dialog */}
+            <InspectionReportDialog
+                isOpen={!!selectedCarId}
+                onClose={() => setSelectedCarId(null)}
+                carId={selectedCarId}
+            />
+            
         </div>
     );
 };

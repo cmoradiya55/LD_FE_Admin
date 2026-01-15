@@ -12,9 +12,6 @@ import {
   ChevronDown,
   ChevronUp,
   User,
-  Settings,
-  Key,
-  Building2,
   BadgeCheck,
   CarFront
 } from 'lucide-react';
@@ -28,10 +25,9 @@ interface SidebarProps {
   onLogout: () => void;
   isMobileMenuOpen?: boolean;
   onCloseMobileMenu?: () => void;
-  roleId?: number; // 1 = Admin, 2 = Manager, 3 = Inspector
+  roleId?: number; // 1 = Admin, 2 = Manager, 3 = Inspector, 4 = Staff
 }
 
-// Role-based menu configurations
 const adminMenuItems = [
   { id: 'adminDashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'users', label: 'Users', icon: User },
@@ -55,7 +51,12 @@ const inspectorMenuItems = [
   { id: 'profile', label: 'Profile', icon: User },
 ];
 
-// Get menu items based on role
+const staffMenuItems = [
+  { id: 'staffDashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'car', label: 'Car', icon: CarFront },
+  { id: 'profile', label: 'Profile', icon: User },
+];
+
 const getMenuItems = (roleId?: number) => {
   switch (roleId) {
     case 1: // Admin
@@ -64,6 +65,8 @@ const getMenuItems = (roleId?: number) => {
       return managerMenuItems;
     case 3: // Inspector
       return inspectorMenuItems;
+    case 4: // Staff
+      return staffMenuItems;
     default:
       return adminMenuItems; // Default to admin
   }
@@ -93,10 +96,8 @@ export default function Sidebar({
   const popupRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const triggerRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Get menu items based on role
   const menuItems = useMemo(() => getMenuItems(roleId), [roleId]);
 
-  // Memoize menu item lookups for better performance
   const menuItemMap = useMemo(() => {
     const map = new Map<string, typeof menuItems[0]>();
     menuItems.forEach(item => {
@@ -105,7 +106,6 @@ export default function Sidebar({
     return map;
   }, [menuItems]);
 
-  // Optimized toggle expanded function
   const toggleExpanded = useCallback((itemId: string) => {
     setExpandedItems(prev => {
       const next = new Set(prev);
@@ -118,7 +118,6 @@ export default function Sidebar({
     });
   }, []);
 
-  // Smooth active indicator update using requestAnimationFrame
   const updateActiveIndicator = useCallback(() => {
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
@@ -146,11 +145,9 @@ export default function Sidebar({
     });
   }, [currentPage, collapsed]);
 
-  // Update indicator smoothly when dependencies change
   useEffect(() => {
     updateActiveIndicator();
 
-    // Also update after a short delay to handle DOM updates
     const timer = setTimeout(updateActiveIndicator, 100);
 
     return () => {
@@ -161,14 +158,12 @@ export default function Sidebar({
     };
   }, [updateActiveIndicator, expandedItems]);
 
-  // Handle collapsed state and auto-expand logic
   useEffect(() => {
     if (collapsed) {
       setExpandedItems(new Set());
       setActiveIndicatorStyle(prev => ({ ...prev, opacity: 0 }));
       setActivePopup(null);
     } else {
-      // Auto-expand parent items if any submenu item is active
       const newExpanded = new Set<string>();
       menuItems.forEach(item => {
       });
@@ -198,17 +193,6 @@ export default function Sidebar({
     };
   }, [activePopup]);
 
-  // Check if any submenu item is active for a parent (memoized)
-  const isSubMenuActive = useCallback((parentId: string): boolean => {
-    const parent = menuItemMap.get(parentId);
-    // If no parent found or no submenu items, return false
-    if (!parent) return false;
-    // TODO: Add submenu check logic if submenus are implemented
-    // For now, return false as there are no submenu items
-    return false;
-  }, [currentPage, menuItemMap]);
-
-  // Handle page change and close mobile menu
   const handlePageChange = useCallback((page: string) => {
     onPageChange(page);
     if (onCloseMobileMenu) {
@@ -216,18 +200,11 @@ export default function Sidebar({
     }
   }, [onPageChange, onCloseMobileMenu]);
 
-  // Handle menu item click with improved logic
   const handleMenuItemClick = useCallback((item: typeof menuItems[0]) => {
     handlePageChange(item.id);
     setActivePopup(null);
   }, [collapsed, toggleExpanded, handlePageChange]);
 
-  const handleSubItemClick = useCallback((subItemId: string) => {
-    handlePageChange(subItemId);
-    setActivePopup(null);
-  }, [handlePageChange]);
-
-  // Memoize hover handlers for better performance
   const handleMouseEnter = useCallback((itemId: string) => {
     setHoveredItem(itemId);
   }, []);
@@ -333,7 +310,6 @@ export default function Sidebar({
             const isActive = currentPage === item.id;
             const isHovered = hoveredItem === item.id;
             const isExpanded = expandedItems.has(item.id);
-            const isSubItemActive = isSubMenuActive(item.id);
 
             return (
               <div

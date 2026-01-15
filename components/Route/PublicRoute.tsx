@@ -45,6 +45,17 @@ export default function PublicRoute({ children }: PublicRouteProps) {
           router.push('/inspector/document-upload?status=4'); // documents rejected
         }
       }
+      else if (roleId == 4) {
+        if (documentStatus == 1) {
+          router.push('/staff/document-upload?status=1'); // not upload documents
+        } else if (documentStatus == 2) {
+          router.push('/staff/document-upload?status=2'); // documents under review
+        } else if (documentStatus == 3) {
+          router.push('/staff/staffDashboard'); // documents approved
+        } else if (documentStatus == 4) {
+          router.push('/staff/document-upload?status=4'); // documents rejected
+        }
+      }
     }
   }, [router, authState]);
 
