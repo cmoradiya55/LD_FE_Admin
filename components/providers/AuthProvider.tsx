@@ -210,15 +210,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const roleId = user.roleId;
+      const documentStatus = user.documentStatus;
+      
       switch (roleId) {
         case 1:
           router.push('/admin/adminDashboard');
           break;
         case 2:
-          router.push('/manager/managerDashboard');
+          // Manager routing based on document status
+          if (documentStatus == 1) {
+            router.push('/manager/document-upload?status=1');
+          } else if (documentStatus == 2) {
+            router.push('/manager/document-upload?status=2');
+          } else if (documentStatus == 3) {
+            router.push('/manager/managerDashboard');
+          } else if (documentStatus == 4) {
+            router.push('/manager/document-upload?status=4');
+          } else {
+            router.push('/manager/managerDashboard');
+          }
           break;
         case 3:
-          router.push('/inspector/inspectorDashboard');
+          // Inspector routing based on document status
+          if (documentStatus === 1) {
+            router.push('/inspector/document-upload?status=1');
+          } else if (documentStatus === 2) {
+            router.push('/inspector/document-upload?status=2');
+          } else if (documentStatus === 3) {
+            router.push('/inspector/inspectorDashboard');
+          } else if (documentStatus === 4) {
+            router.push('/inspector/document-upload?status=4');
+          } else {
+            router.push('/inspector/inspectorDashboard');
+          }
+          break;
+        case 4:
+          // Staff routing based on document status
+          if (documentStatus == 1) {
+            router.push('/staff/document-upload?status=1');
+          } else if (documentStatus == 2) {
+            router.push('/staff/document-upload?status=2');
+          } else if (documentStatus == 3) {
+            router.push('/staff/staffDashboard');
+          } else if (documentStatus == 4) {
+            router.push('/staff/document-upload?status=4');
+          } else {
+            router.push('/staff/staffDashboard');
+          }
           break;
         default:
           return { success: false, error: 'Invalid role' };

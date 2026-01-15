@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 interface BottomBarProps {
   currentPage: string;
   onPageChange: (page: string) => void;
-  roleId?: number; // 1 = Admin, 2 = Manager, 3 = Inspector
+  roleId?: number; // 1 = Admin, 2 = Manager, 3 = Inspector, 4 = Staff
 }
 
 // Role-based menu configurations (same as Sidebar)
@@ -40,6 +40,12 @@ const inspectorMenuItems = [
   { id: 'profile', label: 'Profile', icon: User },
 ];
 
+const staffMenuItems = [
+  { id: 'staffDashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'car', label: 'Car', icon: CarFront },
+  { id: 'profile', label: 'Profile', icon: User },
+];
+
 // Get menu items based on role
 const getMenuItems = (roleId?: number) => {
   switch (roleId) {
@@ -49,6 +55,8 @@ const getMenuItems = (roleId?: number) => {
       return managerMenuItems;
     case 3: // Inspector
       return inspectorMenuItems;
+    case 4: // Staff
+      return staffMenuItems;
     default:
       return adminMenuItems; // Default to admin
   }

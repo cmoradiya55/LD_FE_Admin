@@ -42,18 +42,10 @@ const InspectorDashboard = () => {
         },
         {
             id: 2,
-            title: "Car Inspection Form",
-            description: "Submit your inspection form",
-            icon: FileText,
-            color: "from-teal-500 to-emerald-500",
-            route: "/inspector/carInspection",
-        },
-        {
-            id: 3,
             title: "Notifications",
             description: "View latest updates",
             icon: Bell,
-            color: "from-cyan-500 to-blue-600",
+            color: "from-teal-500 to-emerald-500",
             route: "/inspector/notifications",
         },
     ];
@@ -116,7 +108,7 @@ const InspectorDashboard = () => {
                     <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-400/10 rounded-full blur-3xl"></div>
                 </div>
-                
+
                 <div className="relative z-10">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
@@ -197,7 +189,7 @@ const InspectorDashboard = () => {
                         </p>
                     </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {quickActions.map((action) => (
                         <div
@@ -207,13 +199,13 @@ const InspectorDashboard = () => {
                         >
                             {/* Gradient Overlay on Hover */}
                             <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
-                            
+
                             {/* Side Accent Bar */}
                             <div className={`absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b ${action.color} opacity-60 group-hover:opacity-100 transition-opacity duration-300`}></div>
-                            
+
                             {/* Decorative Corner */}
                             <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10 rounded-bl-full transition-opacity duration-300`}></div>
-                            
+
                             <div className="relative p-5">
                                 <div className="flex items-start gap-3 mb-3">
                                     <div
@@ -248,7 +240,7 @@ const InspectorDashboard = () => {
                 <div className="bg-white/90 backdrop-blur-xl rounded-3xl border-2 border-slate-200/60 shadow-[0_8px_30px_rgba(15,23,42,0.12)] p-5 sm:p-6 relative overflow-hidden">
                     {/* Decorative Gradient */}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100/50 to-cyan-100/30 rounded-full blur-3xl"></div>
-                    
+
                     <div className="relative z-10">
                         <div className="flex items-center justify-between mb-4">
                             <div>
@@ -275,14 +267,13 @@ const InspectorDashboard = () => {
                                     onClick={() => router.push("/inspector/carList")}
                                 >
                                     {/* Priority Indicator Bar */}
-                                    <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${
-                                        task.priority === "high"
+                                    <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${task.priority === "high"
                                             ? "bg-gradient-to-b from-red-500 to-red-600"
                                             : task.priority === "medium"
                                                 ? "bg-gradient-to-b from-yellow-500 to-orange-500"
                                                 : "bg-gradient-to-b from-blue-500 to-indigo-500"
-                                    }`}></div>
-                                    
+                                        }`}></div>
+
                                     <div className="flex items-start justify-between pl-3">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1.5">
@@ -290,13 +281,12 @@ const InspectorDashboard = () => {
                                                     {task.carName}
                                                 </p>
                                                 <Badge
-                                                    className={`text-xs px-2 py-0.5 font-bold border ${
-                                                        task.priority === "high"
+                                                    className={`text-xs px-2 py-0.5 font-bold border ${task.priority === "high"
                                                             ? "bg-red-50 text-red-700 border-red-300 shadow-sm"
                                                             : task.priority === "medium"
                                                                 ? "bg-yellow-50 text-yellow-700 border-yellow-300 shadow-sm"
                                                                 : "bg-blue-50 text-blue-700 border-blue-300 shadow-sm"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {task.priority}
                                                 </Badge>
@@ -329,7 +319,7 @@ const InspectorDashboard = () => {
                 <div className="bg-white/90 backdrop-blur-xl rounded-3xl border-2 border-slate-200/60 shadow-[0_8px_30px_rgba(15,23,42,0.12)] p-5 sm:p-6 relative overflow-hidden">
                     {/* Decorative Gradient */}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-100/50 to-emerald-100/30 rounded-full blur-3xl"></div>
-                    
+
                     <div className="relative z-10">
                         <div className="flex items-center justify-between mb-4">
                             <div>
@@ -356,7 +346,7 @@ const InspectorDashboard = () => {
                                 >
                                     {/* Success Indicator Bar */}
                                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-green-500 to-emerald-600 rounded-l-xl"></div>
-                                    
+
                                     <div className="flex items-start justify-between pl-3">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1.5">
@@ -385,7 +375,7 @@ const InspectorDashboard = () => {
             <div className="bg-white/90 backdrop-blur-xl rounded-3xl border-2 border-slate-200/60 shadow-[0_8px_30px_rgba(15,23,42,0.12)] p-5 sm:p-6 relative overflow-hidden">
                 {/* Decorative Gradient */}
                 <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-br from-blue-100/50 to-cyan-100/30 rounded-full blur-3xl"></div>
-                
+
                 <div className="relative z-10">
                     <div className="flex items-center justify-between mb-5">
                         <div>

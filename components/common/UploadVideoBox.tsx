@@ -1,41 +1,79 @@
 "use client";
 
-import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import axios from "axios";
-import { getPreSignedUrlForImage } from "@/utils/axios/auth";
-import { Camera, ImageIcon, CheckCircle2, Upload, Plus } from "lucide-react";
+import { getPreSignedUrlForVideo } from "@/utils/axios/auth";
+import { Camera, Video, CheckCircle2, Upload, Plus, Play } from "lucide-react";
 
-export interface UploadBoxProps {
+export interface UploadVideoBoxProps {
   label: string;
   category?: string;
   onUploadComplete?: (fileUrl: string) => void;
   onUploadError?: (error: any) => void;
-  existingImage?: string | null;
+  existingVideo?: string | null;
+  required?: boolean;
 }
 
-const UploadBox: React.FC<UploadBoxProps> = ({
+// Helper function to get video duration
+const getVideoDuration = (file: File): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+
+    video.onloadedmetadata = () => {
+      window.URL.revokeObjectURL(video.src);
+      resolve(video.duration);
+    };
+
+    video.onerror = () => {
+      window.URL.revokeObjectURL(video.src);
+      reject(new Error("Failed to load video metadata"));
+    };
+
+    video.src = URL.createObjectURL(file);
+  });
+};
+
+const sanitizeFileName = (fileName: string): string => {
+  const lastDotIndex = fileName.lastIndexOf('.');
+  const name = lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
+  const extension = lastDotIndex > 0 ? fileName.substring(lastDotIndex) : '';
+
+  const sanitizedName = name
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  const finalName = sanitizedName || 'video';
+
+  return finalName + extension;
+};
+
+const UploadVideoBox: React.FC<UploadVideoBoxProps> = ({
   label,
-  category = "sensitive_document",
+  category = "inspection_video",
   onUploadComplete,
   onUploadError,
-  existingImage
+  existingVideo,
+  required = false
 }) => {
   const cameraRef = useRef<HTMLInputElement | null>(null);
   const galleryRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const [open, setOpen] = useState(false);
-  const [image, setImage] = useState<string | null>(existingImage || null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(existingVideo || null);
   const [uploading, setUploading] = useState(false);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(existingImage || null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(existingVideo || null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Sync with existingImage prop changes
+  // Sync with existingVideo prop changes
   useEffect(() => {
-    if (existingImage) {
-      setImage(existingImage);
-      setUploadedUrl(existingImage);
+    if (existingVideo) {
+      setVideoUrl(existingVideo);
+      setUploadedUrl(existingVideo);
     }
-  }, [existingImage]);
+  }, [existingVideo]);
 
   const handleFile = async (file?: File) => {
     console.log("handleFile called with file:", file);
@@ -44,36 +82,47 @@ const UploadBox: React.FC<UploadBoxProps> = ({
       return;
     }
 
-    // Show preview immediately
     const preview = URL.createObjectURL(file);
-    setImage(preview);
+    setVideoUrl(preview);
     setUploading(true);
 
     try {
+      let duration = 0;
+      try {
+        duration = await getVideoDuration(file);
+      } catch (error) {
+        console.warn("Could not get video duration:", error);
+      }
+
+      const sanitizedName = sanitizeFileName(file.name);
+
       const payload = {
         category: category,
         files: [
           {
-            name: file.name,
-            type: file.type
+            name: sanitizedName,
+            type: file.type,
+            size: file.size,
+            duration: Math.round(duration)
           }
         ]
       };
 
-      console.log("Calling getPreSignedUrlForImage with payload:", payload);
-      const response = await getPreSignedUrlForImage(payload);
-      console.log("getPreSignedUrlForImage response:", response);
+      console.log("Calling getPreSignedUrlForVideo with payload:", payload);
+      const response = await getPreSignedUrlForVideo(payload);
+      console.log("getPreSignedUrlForVideo response:", response);
+
       if (response && response.data && response.data[0]) {
         const presignedUrlData = response.data[0];
         const uploadConfig = {
           headers: {
-            'Content-Type': file.type || 'application/octet-stream',
+            'Content-Type': file.type || 'video/mp4',
           },
         };
         await axios.put(presignedUrlData.uploadUrl, file, uploadConfig);
         const fileUrl = presignedUrlData.keyWithBaseUrl;
         setUploadedUrl(fileUrl);
-        setImage(fileUrl);
+        setVideoUrl(fileUrl);
 
         if (onUploadComplete) {
           onUploadComplete(fileUrl);
@@ -86,10 +135,33 @@ const UploadBox: React.FC<UploadBoxProps> = ({
       if (onUploadError) {
         onUploadError(error);
       }
+      if (videoUrl && videoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoUrl);
+        setVideoUrl(null);
+      }
     } finally {
       setUploading(false);
     }
   };
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (videoUrl && videoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
 
   return (
     <>
@@ -97,21 +169,27 @@ const UploadBox: React.FC<UploadBoxProps> = ({
       <div
         onClick={() => !uploading && setOpen(true)}
         className={`group relative rounded-xl border transition-all duration-200 overflow-hidden
-          ${image
-            ? 'h-48 border-slate-200 bg-white shadow-sm hover:shadow-md cursor-pointer'
+          ${videoUrl
+            ? 'min-h-64 border-slate-200 bg-slate-900 shadow-sm hover:shadow-md cursor-pointer'
             : uploading
               ? 'h-40 border-blue-300 bg-blue-50/50 cursor-wait'
               : 'h-40 border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/50 hover:border-blue-400 hover:from-blue-50 hover:to-cyan-50 cursor-pointer'
           }`}
       >
-        {image ? (
+        {videoUrl ? (
           <div className="relative w-full h-full group">
-            <Image
-              height={400}
-              width={400}
-              src={image}
-              alt="preview"
-              className="w-full h-full object-contain"
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              className="w-full h-full object-contain bg-slate-900"
+              controls
+              playsInline
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
+              onError={(e) => {
+                console.error("Video error:", e);
+              }}
             />
 
             {/* Upload overlay */}
@@ -131,12 +209,31 @@ const UploadBox: React.FC<UploadBoxProps> = ({
               </div>
             )}
 
+            {/* Play/Pause button */}
+            {!uploading && (
+              <div
+                className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlay();
+                }}
+              >
+                <button className="text-white bg-white/20 backdrop-blur-sm rounded-full p-3 hover:bg-white/30 transition-all">
+                  {isPlaying ? (
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <div className="w-2 h-4 border-l-2 border-r-2 border-white"></div>
+                    </div>
+                  ) : (
+                    <Play className="h-6 w-6 ml-1" fill="white" />
+                  )}
+                </button>
+              </div>
+            )}
+
             {/* Change overlay */}
             {!uploading && (
-              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                <span className="text-white text-sm font-medium bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-                  Click to Change
-                </span>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-900/60 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                <span className="text-white text-xs font-medium">Click to Change Video</span>
               </div>
             )}
           </div>
@@ -155,6 +252,7 @@ const UploadBox: React.FC<UploadBoxProps> = ({
 
             <p className="font-bold text-slate-900 text-center mb-2 group-hover:text-blue-700 transition-colors">
               {label}
+              {required && <span className="text-red-500 ml-1">*</span>}
             </p>
 
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
@@ -175,7 +273,7 @@ const UploadBox: React.FC<UploadBoxProps> = ({
       <input
         ref={cameraRef}
         type="file"
-        accept="image/*"
+        accept="video/*"
         capture="environment"
         className="hidden"
         onChange={(e) => {
@@ -193,7 +291,7 @@ const UploadBox: React.FC<UploadBoxProps> = ({
       <input
         ref={galleryRef}
         type="file"
-        accept="image/*"
+        accept="video/*"
         className="hidden"
         onChange={(e) => {
           console.log("Gallery input onChange triggered, files:", e.target.files);
@@ -210,7 +308,7 @@ const UploadBox: React.FC<UploadBoxProps> = ({
       {/* Dialog */}
       {open && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
           onClick={() => setOpen(false)}
         >
           <div
@@ -218,7 +316,7 @@ const UploadBox: React.FC<UploadBoxProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-center font-semibold text-slate-900 text-lg mb-1">
-              Upload Image
+              Upload Video
             </h3>
 
             <button
@@ -239,7 +337,7 @@ const UploadBox: React.FC<UploadBoxProps> = ({
               }}
               className="w-full py-3.5 rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition-all duration-200 flex items-center justify-center gap-2"
             >
-              <ImageIcon className="h-5 w-5" />
+              <Video className="h-5 w-5" />
               Choose from Gallery
             </button>
 
@@ -256,4 +354,5 @@ const UploadBox: React.FC<UploadBoxProps> = ({
   );
 };
 
-export default UploadBox;
+export default UploadVideoBox;
+

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import TextInput from "@/components/FormComponent/TextInput";
-import UploadBox from "@/components/common/UploadBox";
+import UploadBox from "@/components/common/UploadImageBox";
 import { submitDocumentDetails } from "@/utils/axios/auth";
 import { toast } from "sonner";
 

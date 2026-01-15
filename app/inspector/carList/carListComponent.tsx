@@ -3,14 +3,16 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Filter, Car, UserX, UserCheck, Users, CheckCircle2, Clock, ClipboardList } from "lucide-react";
+import { Filter, Car, UserX, UserCheck, Users, CheckCircle2, Clock, ClipboardList, FileText } from "lucide-react";
 import { OverviewStatCard, LoadingSpinner } from "@/components/common";
 import CarCard from "@/components/car/CarCard";
-import { CarData } from "@/app/admin/car/data";
-import { getInspectorUsedCarList, startInspection } from "@/utils/axios/auth";
-import { KilometerDriven, OwnerType, UsedCarListingStatus } from "@/lib/data";
+import { CarData } from "@/lib/CarData";
+import { getAssignedCar, startInspection, getInspectionDetails } from "@/utils/axios/auth";
+import { KilometerDriven, OwnerType, UsedCarListingStatus, ExteriorFields, EngineAndTransmissionFields, SteeringSuspensionAndBrakesFields, AirConditioningFields, ElectricalFields, InteriorFields, SeatsFields } from "@/lib/data";
 import { Button } from "@/components/Button/Button";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import InspectionSummary from "@/components/InspectionReport/InspectionSummary";
 
 type FilterType = "all" | "pending" | "completed";
 
@@ -47,6 +49,8 @@ const CarListComponent = () => {
     const router = useRouter();
     const [activeFilter, setActiveFilter] = useState<FilterType>("all");
     const [loadingCarId, setLoadingCarId] = useState<string | null>(null);
+    const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
 
     const handleStartInspection = async (car: CarData & { vehicleId?: number }) => {
@@ -56,7 +60,7 @@ const CarListComponent = () => {
             const response = await startInspection({ vehicleId });
             console.log("vehicleId-----", vehicleId);
             console.log("response-----", response);
-            if (response?.code === 200) {
+            if (response?.code === 200 || response?.code === 208) {
                 router.push(`/inspector/carInspection?carId=${car.id}`);
             } else {
                 console.error("Failed to start inspection:", response?.message || "Unknown error");
@@ -71,9 +75,9 @@ const CarListComponent = () => {
     };
 
     const { data: carsResponse, isLoading, isError } = useQuery({
-        queryKey: ['GET_INSPECTOR_USED_CAR_LIST'],
+        queryKey: ['GET_ASSIGNED_CAR'],
         queryFn: async () => {
-            const response = await getInspectorUsedCarList();
+            const response = await getAssignedCar();
             if (response?.code === 200 && response?.data) {
                 const cars: (CarData & { status?: number; vehicleId?: number })[] = response.data.map((item: any) => {
                     return {
@@ -104,6 +108,149 @@ const CarListComponent = () => {
     });
 
     const cars = carsResponse || [];
+
+    const { data: inspectionData, isLoading: isLoadingInspection } = useQuery({
+        queryKey: ['GET_INSPECTION_DETAILS', selectedCarId],
+        queryFn: async () => {
+            if (!selectedCarId) return null;
+            const response = await getInspectionDetails(selectedCarId);
+            if (response?.code === 200 && response?.data) {
+                const data = response.data;
+                // Transform isDamage from boolean to "yes"/"no" in inspectionImages
+                if (data.inspectionImages && Array.isArray(data.inspectionImages)) {
+                    data.inspectionImages = data.inspectionImages.map((imageData: any) => {
+                        if (imageData.isDamage !== undefined || imageData.is_damage !== undefined) {
+                            const isDamage = imageData.isDamage !== undefined ? imageData.isDamage : imageData.is_damage;
+                            return {
+                                ...imageData,
+                                isDamage: isDamage ? "yes" : "no",
+                                is_damage: isDamage ? "yes" : "no",
+                            };
+                        }
+                        return imageData;
+                    });
+                }
+                // Also check inspection_images (snake_case variant)
+                if (data.inspection_images && Array.isArray(data.inspection_images)) {
+                    data.inspection_images = data.inspection_images.map((imageData: any) => {
+                        if (imageData.isDamage !== undefined || imageData.is_damage !== undefined) {
+                            const isDamage = imageData.isDamage !== undefined ? imageData.isDamage : imageData.is_damage;
+                            return {
+                                ...imageData,
+                                isDamage: isDamage ? "yes" : "no",
+                                is_damage: isDamage ? "yes" : "no",
+                            };
+                        }
+                        return imageData;
+                    });
+                }
+                return data;
+            }
+            return null;
+        },
+        enabled: !!selectedCarId && isDialogOpen,
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
+
+    const formValues = useMemo(() => {
+        if (!inspectionData) {
+            return {
+                registration_number: "",
+                registartion_year: 0,
+                km_driven: 0,
+                rc_image: "",
+                insurance_image: "",
+            };
+        }
+
+        const allFields = [
+            ...ExteriorFields,
+            ...EngineAndTransmissionFields,
+            ...SteeringSuspensionAndBrakesFields,
+            ...AirConditioningFields,
+            ...ElectricalFields,
+            ...InteriorFields,
+            ...SeatsFields,
+        ];
+
+        const values: Record<string, any> = {
+            // Basic inspection info
+            registration_number: inspectionData.car?.registration_number || "",
+            registartion_year: inspectionData.car?.registartion_year || 0,
+            km_driven: inspectionData.km_driven || 0,
+            rc_image: inspectionData.rc_image || "",
+            insurance_image: inspectionData.insurance_image || "",
+            
+            // Car details
+            car_brand: inspectionData.car?.brand || "",
+            car_model: inspectionData.car?.model || "",
+            car_variant: inspectionData.car?.variant || "",
+            car_modelYear: inspectionData.car?.modelYear || "",
+            car_fuelType: inspectionData.car?.fuelTypeLabel || "",
+            car_ownerType: inspectionData.car?.ownerType || "",
+            
+            // Customer details
+            customer_id: inspectionData.customer?.id || "",
+            customer_fullName: inspectionData.customer?.fullName || "",
+            customer_mobileNo: inspectionData.customer?.mobileNo || "",
+            customer_countryCode: inspectionData.customer?.countryCode || "",
+            customer_pincode: inspectionData.customer?.pincode || "",
+            customer_areaName: inspectionData.customer?.areaName || "",
+            customer_city: inspectionData.customer?.city || "",
+            customer_state: inspectionData.customer?.state || "",
+            
+            // Inspection status
+            inspection_id: inspectionData.id || "",
+            inspection_status: inspectionData.status || "",
+            inspection_statusLabel: inspectionData.statusLabel || "",
+        };
+
+        if (inspectionData.inspectionImages && Array.isArray(inspectionData.inspectionImages)) {
+            inspectionData.inspectionImages.forEach((imageData: any) => {
+                const matchingField = allFields.find(
+                    (field) => field.type === imageData.type && field.sub_type === imageData.sub_type
+                );
+
+                if (matchingField) {
+                    // isDamage is now "yes"/"no" string from API response
+                    const isDamage = imageData.isDamage !== undefined ? imageData.isDamage :
+                        (imageData.is_damage !== undefined ? imageData.is_damage : "no");
+                    const fieldValue: any = {
+                        damage: typeof isDamage === "boolean" ? (isDamage ? "yes" : "no") : isDamage,
+                        remarks: imageData.remarks || "",
+                        image: imageData.image_url || "",
+                        title: imageData.title || "",
+                    };
+
+                    // Handle tyre fields with tread_depth
+                    if (matchingField.fieldType === "tyre" && imageData.tread_depth !== undefined) {
+                        fieldValue.treadDepth = imageData.tread_depth.toString();
+                    }
+                    
+                    // Handle ORVM fields
+                    if (matchingField.fieldType === "orvm") {
+                        if (imageData.orvm_type) fieldValue.orvm_type = imageData.orvm_type;
+                        if (imageData.folding_mirror_working !== undefined) {
+                            fieldValue.folding_mirror_working = imageData.folding_mirror_working ? "yes" : "no";
+                        }
+                        if (imageData.mirror_adjust_motor !== undefined) {
+                            fieldValue.mirror_adjust_motor = imageData.mirror_adjust_motor ? "yes" : "no";
+                        }
+                    }
+                    
+                    // Handle electrical fields with is_power
+                    if (matchingField.fieldType === "electrical" && imageData.is_power !== undefined) {
+                        fieldValue.electrical_type = imageData.is_power ? "electric" : "manual";
+                    }
+                    
+                    values[matchingField.name] = fieldValue;
+                }
+            });
+        }
+
+        return values;
+    }, [inspectionData]);
 
     const filteredCars = useMemo(() => {
         if (activeFilter === "all") return cars;
@@ -171,6 +318,7 @@ const CarListComponent = () => {
     return (
         <div className="min-h-screen">
             <div className="px-2 py-2 space-y-4">
+
                 {/* Header */}
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Car List</h1>
@@ -289,7 +437,22 @@ const CarListComponent = () => {
                                             </Button>
                                         </div>
                                     )}
-
+                                    {isCompleted && (
+                                        <div className="px-2 pb-2">
+                                            <Button
+                                                variant="primary"
+                                                className="w-full text-[11px]"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedCarId(car.id);
+                                                    setIsDialogOpen(true);
+                                                }}
+                                            >
+                                                <FileText className="h-3.5 w-3.5 mr-2" />
+                                                View Inspection Report
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -297,6 +460,48 @@ const CarListComponent = () => {
                 )}
 
             </div>
+
+            {/* Inspection Report Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) {
+                    setSelectedCarId(null);
+                }
+            }}>
+                <DialogContent className="max-w-[98vw] max-h-[95vh] overflow-y-auto p-4 sm:p-6">
+                    <DialogHeader className="mb-4">
+                        <DialogTitle>Inspection Report</DialogTitle>
+                    </DialogHeader>
+                    {isLoadingInspection ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="flex flex-col items-center gap-4">
+                                <LoadingSpinner />
+                                <p className="text-slate-600">Loading inspection details...</p>
+                            </div>
+                        </div>
+                    ) : inspectionData ? (
+                        <InspectionSummary
+                            formValues={formValues}
+                            allFields={{
+                                exterior: ExteriorFields,
+                                engine: EngineAndTransmissionFields,
+                                mechanical: SteeringSuspensionAndBrakesFields,
+                                ac: AirConditioningFields,
+                                electrical: ElectricalFields,
+                                interior: InteriorFields,
+                                seats: SeatsFields,
+                            }}
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="flex flex-col items-center gap-4">
+                                <p className="text-red-600">Failed to load inspection details</p>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
         </div>
     );
 };

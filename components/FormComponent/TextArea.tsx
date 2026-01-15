@@ -36,17 +36,17 @@ const TextArea: React.FC<TextAreaProps> = ({
   icon,
   disabled = false,
   hideLabel = false,
-  inputClassName = 'px-4 py-3',
+  inputClassName = 'px-3 py-2',
   rules,
   rows = 4,
   maxLength,
 }) => {
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-1.5 ${className}`}>
       {!hideLabel && (
         <label 
           htmlFor={name} 
-          className={`text-sm font-semibold flex items-center gap-2 ${
+          className={`text-xs font-semibold flex items-center gap-1.5 ${
             disabled ? 'text-gray-500' : 'text-slate-700'
           }`}
         >
@@ -70,7 +70,7 @@ const TextArea: React.FC<TextAreaProps> = ({
             disabled={disabled}
             rows={rows}
             maxLength={maxLength}
-            className={`w-full border-2 rounded-lg transition-all duration-200 focus:outline-none placeholder:text-slate-400 text-slate-800 resize-y ${
+            className={`w-full border-2 rounded-md transition-all duration-200 focus:outline-none placeholder:text-slate-400 text-sm text-slate-800 resize-y ${
               disabled 
                 ? 'bg-slate-100 border-slate-300 text-slate-500 cursor-not-allowed' 
                 : error 
@@ -81,8 +81,8 @@ const TextArea: React.FC<TextAreaProps> = ({
         )}
       />
       {error && (
-        <p className="text-red-500 text-sm flex items-center gap-2 mt-1">
-          <AlertCircle className="w-4 h-4" />
+        <p className="text-red-500 text-xs flex items-center gap-1 mt-0.5">
+          <AlertCircle className="w-3 h-3" />
           {error.message}
         </p>
       )}

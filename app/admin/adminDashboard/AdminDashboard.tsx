@@ -249,7 +249,7 @@ const AdminDashboard = () => {
       />
 
       {/* Cars Overview */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-5">
         {carsOverviewStats.map((card) => (
           <OverviewStatCard
             key={card.label}
@@ -262,7 +262,7 @@ const AdminDashboard = () => {
         {/* Vendors Overview */}
         <section className="space-y-2 flex-1">
           <h3 className="text-base font-semibold text-slate-800 sm:text-lg">Vendors overview Mobile</h3>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
             {vendorOverviewStats.map((card) => (
               <OverviewSummaryCard key={card.title} {...card} />
             ))}
@@ -272,7 +272,7 @@ const AdminDashboard = () => {
         {/* Drivers Overview */}
         <section className="space-y-2 flex-1">
           <h3 className="text-base font-semibold text-slate-800 sm:text-lg">Drivers overview Mobile</h3>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
             {driverOverviewStats.map((card) => (
               <OverviewSummaryCard key={card.title} {...card} />
             ))}

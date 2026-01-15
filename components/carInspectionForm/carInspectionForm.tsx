@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import React, { useState, useEffect } from "react";
+import { useForm, FieldError } from "react-hook-form";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import TextInput from "@/components/FormComponent/TextInput";
 import { Button } from "@/components/Button/Button";
-import UploadBox from "@/components/common/UploadBox";
+import UploadBox from "@/components/common/UploadImageBox";
 import InspectionField from "@/components/common/InspectionField";
 import {
   Car,
@@ -15,10 +16,18 @@ import {
   Save,
   ArrowLeft,
   Cog,
+  AirVent,
+  ShipWheel,
+  Plug,
+  SquareStack,
+  RockingChair,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { saveInspectionProcess } from "@/utils/axios/auth";
-import { InspectionImageType, InspectionImageSubType } from "@/lib/data";
+import { saveInspectionProcess, getInspectionDetails, completeInspection } from "@/utils/axios/auth";
+import { InspectionImageType, TreadDepthEnum, IMAGE_SUBTYPE_NAMES, ExteriorFields, AirConditioningFields, EngineAndTransmissionFields, SteeringSuspensionAndBrakesFields, InteriorFields, ElectricalFields, SeatsFields } from "@/lib/data";
+import InspectionSummary from "../InspectionReport/InspectionSummary";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 interface InspectionFormData {
   registration_number: string;
@@ -26,7 +35,6 @@ interface InspectionFormData {
   km_driven: number;
   rc_image: string;
   insurance_image: string;
-  // Exterior fields
   pillar_lhs_a?: {
     damage: string;
     remarks: string;
@@ -187,7 +195,6 @@ interface InspectionFormData {
     remarks: string;
     image?: string;
   };
-  // Lights
   light_lhs_headlight?: {
     damage: string;
     remarks: string;
@@ -218,7 +225,6 @@ interface InspectionFormData {
     remarks: string;
     image?: string;
   };
-  // ORVM
   orvm_lhs?: {
     damage: string;
     remarks: string;
@@ -235,38 +241,36 @@ interface InspectionFormData {
     folding_mirror_working?: string;
     mirror_adjust_motor?: string;
   };
-  // Tyres
   lhs_front_tyre?: {
     damage: string;
     remarks: string;
     image?: string;
-    thread_depth?: string;
+    tread_depth?: string;
   };
   rhs_front_tyre?: {
     damage: string;
     remarks: string;
     image?: string;
-    thread_depth?: string;
+    tread_depth?: string;
   };
   lhs_rear_tyre?: {
     damage: string;
     remarks: string;
     image?: string;
-    thread_depth?: string;
+    tread_depth?: string;
   };
   rhs_rear_tyre?: {
     damage: string;
     remarks: string;
     image?: string;
-    thread_depth?: string;
+    tread_depth?: string;
   };
   spare_tyre?: {
     damage: string;
     remarks: string;
     image?: string;
-    thread_depth?: string;
+    tread_depth?: string;
   };
-  // Engine & Transmission
   exhaust_smoke?: {
     damage: string;
     remarks: string;
@@ -334,6 +338,7 @@ const CarInspectionForm = () => {
 
   const [rcImage, setRcImage] = useState<string>("");
   const [insuranceImage, setInsuranceImage] = useState<string>("");
+  const [validationErrors, setValidationErrors] = useState<Array<{ type: number; subtype: number; name: string }>>([]);
 
   const { control, watch, handleSubmit, setValue, formState: { errors } } = useForm<InspectionFormData>({
     defaultValues: {
@@ -345,6 +350,50 @@ const CarInspectionForm = () => {
     },
   });
 
+  const { data: inspectionData, isLoading: isLoadingInspection, isError: isInspectionError } = useQuery({
+    queryKey: ['GET_INSPECTION_DETAILS', carId],
+    queryFn: async () => {
+      if (!carId) return null;
+      const response = await getInspectionDetails(carId);
+      if (response?.code === 200 && response?.data) {
+        const data = response.data;
+        // Transform isDamage from boolean to "yes"/"no" in inspectionImages
+        if (data.inspectionImages && Array.isArray(data.inspectionImages)) {
+          data.inspectionImages = data.inspectionImages.map((imageData: any) => {
+            if (imageData.isDamage !== undefined || imageData.is_damage !== undefined) {
+              const isDamage = imageData.isDamage !== undefined ? imageData.isDamage : imageData.is_damage;
+              return {
+                ...imageData,
+                isDamage: isDamage ? "yes" : "no",
+                is_damage: isDamage ? "yes" : "no",
+              };
+            }
+            return imageData;
+          });
+        }
+        // Also check inspection_images (snake_case variant)
+        if (data.inspection_images && Array.isArray(data.inspection_images)) {
+          data.inspection_images = data.inspection_images.map((imageData: any) => {
+            if (imageData.isDamage !== undefined || imageData.is_damage !== undefined) {
+              const isDamage = imageData.isDamage !== undefined ? imageData.isDamage : imageData.is_damage;
+              return {
+                ...imageData,
+                isDamage: isDamage ? "yes" : "no",
+                is_damage: isDamage ? "yes" : "no",
+              };
+            }
+            return imageData;
+          });
+        }
+        return data;
+      }
+      return null;
+    },
+    enabled: !!carId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
   const sections = [
     { id: 0, name: "Car Details", icon: Car },
     { id: 1, name: "Exterior", icon: Camera },
@@ -353,120 +402,167 @@ const CarInspectionForm = () => {
     { id: 4, name: "Assessment", icon: CheckCircle2 },
   ];
 
-  // Exterior inspection fields configuration with type and sub_type mapping from enums
-  const exteriorFields = [
-    // Body Parts (order matches enum structure)
-    { name: "roof", label: "Roof", fieldType: "pillar" as const, uploadLabel: "Upload Roof Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].ROOF },
-    { name: "bonnet_hood", label: "Bonnet/Hood", fieldType: "pillar" as const, uploadLabel: "Upload Bonnet/Hood Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].BONNET },
-    // Pillars
-    { name: "pillar_lhs_a", label: "Pillar LHS A", fieldType: "pillar" as const, uploadLabel: "Upload Pillar LHS A Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].PILLAR_LHS_A },
-    { name: "pillar_lhs_b", label: "Pillar LHS B", fieldType: "pillar" as const, uploadLabel: "Upload Pillar LHS B Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].PILLAR_LHS_B },
-    { name: "pillar_lhs_c", label: "Pillar LHS C", fieldType: "pillar" as const, uploadLabel: "Upload Pillar LHS C Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].PILLAR_LHS_C },
-    { name: "pillar_rhs_a", label: "Pillar RHS A", fieldType: "pillar" as const, uploadLabel: "Upload Pillar RHS A Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].PILLAR_RHS_A },
-    { name: "pillar_rhs_b", label: "Pillar RHS B", fieldType: "pillar" as const, uploadLabel: "Upload Pillar RHS B Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].PILLAR_RHS_B },
-    { name: "pillar_rhs_c", label: "Pillar RHS C", fieldType: "pillar" as const, uploadLabel: "Upload Pillar RHS C Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].PILLAR_RHS_C },
-    // Cross Members & Supports
-    { name: "upper_cross_member", label: "Upper Cross Member (Bonnet Patti)", fieldType: "pillar" as const, uploadLabel: "Upload Upper Cross Member Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].UPPER_CROSS_MEMBER },
-    { name: "lower_cross_member", label: "Lower Cross Member", fieldType: "pillar" as const, uploadLabel: "Upload Lower Cross Member Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].LOWER_CROSS_MEMBER },
-    { name: "radiator_support", label: "Radiator Support", fieldType: "pillar" as const, uploadLabel: "Upload Radiator Support Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].RADIATOR_SUPPORT },
-    { name: "head_light_support", label: "Head Light Support", fieldType: "light" as const, uploadLabel: "Upload Head Light Support Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].HEADLIGHT_SUPPORT },
-    { name: "dicky_door_boot_door", label: "Dicky Door/Boot Door", fieldType: "pillar" as const, uploadLabel: "Upload Dicky Door/Boot Door Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].BOOT_DOOR },
-    // Firewall
-    { name: "firewall", label: "Firewall", fieldType: "pillar" as const, uploadLabel: "Upload Firewall Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].FIREWALL },
-    // Quarter Panels
-    { name: "quarter_panel_lhs", label: "Quarter Panel LHS", fieldType: "pillar" as const, uploadLabel: "Upload Quarter Panel LHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].QUARTER_PANEL_LHS },
-    { name: "quarter_panel_rhs", label: "Quarter Panel RHS", fieldType: "pillar" as const, uploadLabel: "Upload Quarter Panel RHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].QUARTER_PANEL_RHS },
-    // Fenders
-    { name: "fender_lhs", label: "Fender LHS", fieldType: "pillar" as const, uploadLabel: "Upload Fender LHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].FENDER_LHS },
-    { name: "fender_rhs", label: "Fender RHS", fieldType: "pillar" as const, uploadLabel: "Upload Fender RHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].FENDER_RHS },
-    // Aprons
-    { name: "apron_lhs", label: "Apron LHS", fieldType: "pillar" as const, uploadLabel: "Upload Apron LHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].APRON_LHS },
-    { name: "apron_rhs", label: "Apron RHS", fieldType: "pillar" as const, uploadLabel: "Upload Apron RHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].APRON_RHS },
-    { name: "apron_lhs_leg", label: "Apron LHS LEG", fieldType: "pillar" as const, uploadLabel: "Upload Apron LHS LEG Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].APRON_LHS_LEG },
-    { name: "apron_rhs_leg", label: "Apron RHS LEG", fieldType: "pillar" as const, uploadLabel: "Upload Apron RHS LEG Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].APRON_RHS_LEG },
-    // Cowl
-    { name: "cowl_top", label: "Cowl Top", fieldType: "pillar" as const, uploadLabel: "Upload Cowl Top Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].COWL_TOP },
-    // Running Borders
-    { name: "running_border_lhs", label: "Running Border LHS", fieldType: "pillar" as const, uploadLabel: "Upload Running Border LHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].RUNNING_BOARDER_LHS },
-    { name: "running_border_rhs", label: "Running Border RHS", fieldType: "pillar" as const, uploadLabel: "Upload Running Border RHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].RUNNING_BOARDER_RHS },
-    // Doors
-    { name: "door_lhs_front", label: "Door LHS Front", fieldType: "pillar" as const, uploadLabel: "Upload Door LHS Front Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].DOOR_LHS_FRONT },
-    { name: "door_lhs_rear", label: "Door LHS Rear", fieldType: "pillar" as const, uploadLabel: "Upload Door LHS Rear Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].DOOR_LHS_REAR },
-    { name: "door_rhs_front", label: "Door RHS Front", fieldType: "pillar" as const, uploadLabel: "Upload Door RHS Front Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].DOOR_RHS_FRONT },
-    { name: "door_rhs_rear", label: "Door RHS Rear", fieldType: "pillar" as const, uploadLabel: "Upload Door RHS Rear Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].DOOR_RHS_REAR },
-    // Windshields
-    { name: "windshield_front", label: "Windshield Front", fieldType: "pillar" as const, uploadLabel: "Upload Windshield Front Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].WINDSHIELD_FRONT },
-    { name: "windshield_rear", label: "Windshield Rear", fieldType: "pillar" as const, uploadLabel: "Upload Windshield Rear Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].WINDSHIELD_REAR },
-    // Lights
-    { name: "light_lhs_headlight", label: "Light LHS Headlight", fieldType: "light" as const, uploadLabel: "Upload LHS Headlight Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].LIGHT_LHS_HEADLIGHT },
-    { name: "light_rhs_headlight", label: "Light RHS Headlight", fieldType: "light" as const, uploadLabel: "Upload RHS Headlight Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].LIGHT_RHS_HEADLIGHT },
-    { name: "light_lhs_taillight", label: "Light LHS Taillight", fieldType: "light" as const, uploadLabel: "Upload LHS Taillight Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].LIGHT_LHS_TAILLIGHT },
-    { name: "light_rhs_taillight", label: "Light RHS Taillight", fieldType: "light" as const, uploadLabel: "Upload RHS Taillight Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].LIGHT_RHS_TAILLIGHT },
-    // Bumpers
-    { name: "bumper_front", label: "Bumper Front", fieldType: "pillar" as const, uploadLabel: "Upload Bumper Front Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].BUMPER_FRONT },
-    { name: "bumper_rear", label: "Bumper Rear", fieldType: "pillar" as const, uploadLabel: "Upload Bumper Rear Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].BUMPER_REAR },
-    // ORVM
-    { name: "orvm_lhs", label: "ORVM - Manual / Electrical LHS", fieldType: "orvm" as const, uploadLabel: "Upload ORVM LHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].ORVM_LHS },
-    { name: "orvm_rhs", label: "ORVM - Manual / Electrical RHS", fieldType: "orvm" as const, uploadLabel: "Upload ORVM RHS Image", type: InspectionImageType.EXTERIOR, sub_type: InspectionImageSubType[InspectionImageType.EXTERIOR].ORVM_RHS },
-    //Tyres
-    { name: "lhs_front_tyre", label: "LHS Front Tyre", fieldType: "tyre" as const, uploadLabel: "Upload LHS Front Tyre Image", type: InspectionImageType.TYRES, sub_type: InspectionImageSubType[InspectionImageType.TYRES].FRONT_LEFT },
-    { name: "rhs_front_tyre", label: "RHS Front Tyre", fieldType: "tyre" as const, uploadLabel: "Upload RHS Front Tyre Image", type: InspectionImageType.TYRES, sub_type: InspectionImageSubType[InspectionImageType.TYRES].FRONT_RIGHT },
-    { name: "lhs_rear_tyre", label: "LHS Rear Tyre", fieldType: "tyre" as const, uploadLabel: "Upload LHS Rear Tyre Image", type: InspectionImageType.TYRES, sub_type: InspectionImageSubType[InspectionImageType.TYRES].REAR_LEFT },
-    { name: "rhs_rear_tyre", label: "RHS Rear Tyre", fieldType: "tyre" as const, uploadLabel: "Upload RHS Rear Tyre Image", type: InspectionImageType.TYRES, sub_type: InspectionImageSubType[InspectionImageType.TYRES].REAR_RIGHT },
-    { name: "spare_tyre", label: "Spare Tyre", fieldType: "tyre" as const, uploadLabel: "Upload Spare Tyre Image", type: InspectionImageType.TYRES, sub_type: InspectionImageSubType[InspectionImageType.TYRES].SPARE_TYRE },
-  ];
 
-  const engineAndTransmissionFields = [
-    { name: "exhaust_smoke", label: "Exhaust Smoke", fieldType: "exhaust" as const, uploadLabel: "Upload Exhaust Smoke Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].EXHAUST_SMOKE },
-    { name: "engine_oil_level_dipstick", label: "Engine Oil Level Dipstick", fieldType: "exhaust" as const, uploadLabel: "Upload Engine Oil Level Dipstick Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].ENGINE_OIL_LEVEL_DIPSTICK },
-    { name: "battery", label: "Battery", fieldType: "exhaust" as const, uploadLabel: "Upload Battery Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].BATTERY },
-    { name: "coolant", label: "Coolant", fieldType: "exhaust" as const, uploadLabel: "Upload Coolant Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].COOLANT },
-    { name: "sump", label: "Sump", fieldType: "exhaust" as const, uploadLabel: "Upload Sump Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].SUMP },
-    { name: "engine", label: "Engine", fieldType: "engine" as const, uploadLabel: "Upload Engine Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].ENGINE },
-    { name: "engine_sound", label: "Engine Sound", fieldType: "engineSound" as const, uploadLabel: "Upload Engine Sound Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].ENGINE_SOUND },
-    { name: "engine_mounting", label: "Engine Mounting", fieldType: "engineMounting" as const, uploadLabel: "Upload Engine Mounting Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].ENGINE_MOUNTING },
-    { name: "clutch", label: "Clutch", fieldType: "clutch" as const, uploadLabel: "Upload Clutch Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].CLUTCH },
-    { name: "gear_shifting", label: "Gear Shifting", fieldType: "gearShifting" as const, uploadLabel: "Upload Gear Shifting Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].GEAR_SHIFTING },
-    { name: "engine_oil", label: "Engine Oil", fieldType: "engineOil" as const, uploadLabel: "Upload Engine Oil Image", type: InspectionImageType.ENGINE_AND_TRANSMISSION, sub_type: InspectionImageSubType[InspectionImageType.ENGINE_AND_TRANSMISSION].ENGINE_OIL },
-  ];
+  useEffect(() => {
+    if (inspectionData) {
+      if (inspectionData.car?.registrationNumber || inspectionData.car?.registration_number) {
+        setValue("registration_number", inspectionData.car.registrationNumber || inspectionData.car.registration_number || "");
+      }
+      if (inspectionData.car?.registrationYear || inspectionData.car?.registartion_year) {
+        setValue("registartion_year", inspectionData.car.registrationYear || inspectionData.car.registartion_year || 0);
+      }
+      if (inspectionData.km_driven || inspectionData.inspection?.kmDriven || inspectionData.inspection?.km_driven) {
+        setValue("km_driven", inspectionData.km_driven || inspectionData.inspection?.kmDriven || inspectionData.inspection?.km_driven || 0);
+      }
+      if (inspectionData.rc_image || inspectionData.rcImage) {
+        const rcImg = inspectionData.rc_image || inspectionData.rcImage || "";
+        setRcImage(rcImg);
+        setValue("rc_image", rcImg);
+      }
+      if (inspectionData.insurance_image || inspectionData.insuranceImage) {
+        const insImg = inspectionData.insurance_image || inspectionData.insuranceImage || "";
+        setInsuranceImage(insImg);
+        setValue("insurance_image", insImg);
+      }
+
+      const inspectionImages = inspectionData.inspectionImages || inspectionData.inspection_images || [];
+      if (Array.isArray(inspectionImages) && inspectionImages.length > 0) {
+        const allFields = [
+          ...ExteriorFields,
+          ...EngineAndTransmissionFields,
+          ...SteeringSuspensionAndBrakesFields,
+          ...AirConditioningFields,
+          ...ElectricalFields,
+          ...InteriorFields,
+          ...SeatsFields,
+        ];
+
+        inspectionImages.forEach((imageData: any) => {
+          const subType = imageData.subType || imageData.sub_type;
+          const matchingField = allFields.find(
+            (field) => field.type === imageData.type && field.sub_type === subType
+          );
+
+          if (matchingField) {
+            // isDamage is now "yes"/"no" string from API response
+            const isDamage = imageData.isDamage !== undefined ? imageData.isDamage :
+              (imageData.is_damage !== undefined ? imageData.is_damage : "no");
+            const imageUrl = imageData.imageUrl || imageData.image_url || "";
+            const remarks = imageData.remarks || "";
+
+            const fieldValue: any = {
+              damage: typeof isDamage === "boolean" ? (isDamage ? "yes" : "no") : isDamage,
+              remarks: remarks,
+              image: imageUrl,
+            };
+
+            if (matchingField.fieldType === "tyre") {
+              const treadDepth = imageData.treadDepth || imageData.tread_depth;
+              if (treadDepth !== undefined && treadDepth !== null) {
+                fieldValue.tread_depth = treadDepth.toString();
+              }
+            }
+
+            if (matchingField.fieldType === "orvm") {
+              const orvmType = imageData.orvmType || imageData.orvm_type;
+              if (orvmType) fieldValue.orvm_type = orvmType;
+
+              const foldingMirror = imageData.foldingMirrorWorking !== undefined ? imageData.foldingMirrorWorking :
+                (imageData.folding_mirror_working !== undefined ? imageData.folding_mirror_working : undefined);
+              if (foldingMirror !== undefined) {
+                fieldValue.folding_mirror_working = foldingMirror ? "yes" : "no";
+              }
+
+              const mirrorMotor = imageData.mirrorAdjustMotor !== undefined ? imageData.mirrorAdjustMotor :
+                (imageData.mirror_adjust_motor !== undefined ? imageData.mirror_adjust_motor : undefined);
+              if (mirrorMotor !== undefined) {
+                fieldValue.mirror_adjust_motor = mirrorMotor ? "yes" : "no";
+              }
+            }
+
+            if (matchingField.fieldType === "electrical") {
+              const isPower = imageData.isPower !== undefined ? imageData.isPower :
+                (imageData.is_power !== undefined ? imageData.is_power : undefined);
+              if (isPower !== undefined) {
+                fieldValue.electrical_type = isPower ? "electric" : "manual";
+              }
+            }
+
+            setValue(matchingField.name as keyof InspectionFormData, fieldValue);
+          }
+        });
+      }
+    }
+  }, [inspectionData, setValue]);
 
   const transformFormDataToPayload = (formValues: InspectionFormData) => {
     const images: Array<{
       type: number;
       sub_type: number;
-      image_url: string;
+      image_url?: string;
       is_damage: boolean;
       remarks: string;
       tread_depth?: number;
+      is_power?: boolean;
     }> = [];
 
-    const processFields = (fields: typeof exteriorFields | typeof engineAndTransmissionFields) => {
+    const processFields = (fields: Array<{ name: string; type: number; sub_type: number; fieldType?: string }>) => {
       fields.forEach((field) => {
         const fieldData = formValues[field.name as keyof InspectionFormData] as any;
-        if (!fieldData) return;
+        const isInteriorOrSeat = field.type === InspectionImageType.INTERIOR || field.type === InspectionImageType.SEATS;
+        const hasRemarks = fieldData?.remarks && fieldData.remarks.trim() !== "";
+        const hasImage = fieldData?.image && fieldData.image.trim() !== "";
+        const hasDamageValue = fieldData?.damage !== undefined && fieldData.damage !== "";
 
-        const imageUrl = fieldData.image || "";
-        const damageValue = fieldData.damage || "no";
-        if (!imageUrl && damageValue !== "yes") return;
+        if (!fieldData || (!isInteriorOrSeat && !hasDamageValue && !hasRemarks && !hasImage)) {
+          return;
+        }
 
         const payload: any = {
           type: field.type,
           sub_type: field.sub_type,
-          image_url: imageUrl,
-          is_damage: damageValue === "yes",
+          is_damage: isInteriorOrSeat ? false : fieldData.damage === "yes",
           remarks: fieldData.remarks || "",
         };
 
-        if (field.type === InspectionImageType.TYRES && fieldData.thread_depth) {
-          payload.tread_depth = parseInt(fieldData.thread_depth, 10);
+        if (fieldData.image) {
+          payload.image_url = fieldData.image;
+        }
+
+        if (field.type === InspectionImageType.TYRES) {
+          if (fieldData.tread_depth !== undefined && fieldData.tread_depth !== null && fieldData.tread_depth !== "") {
+            const depth = parseInt(String(fieldData.tread_depth), 10);
+            const validDepths = [
+              TreadDepthEnum.LESS_THAN_3MM,
+              TreadDepthEnum.BETWEEN_3MM_AND_4MM,
+              TreadDepthEnum.BETWEEN_4MM_AND_5MM,
+              TreadDepthEnum.BETWEEN_5MM_AND_6MM,
+              TreadDepthEnum.BETWEEN_6MM_AND_7MM,
+              TreadDepthEnum.BETWEEN_7MM_AND_8MM,
+              TreadDepthEnum.BETWEEN_8MM_AND_9MM,
+              TreadDepthEnum.BETWEEN_9MM_AND_MM,
+            ];
+            if (!Number.isNaN(depth) && validDepths.includes(depth)) {
+              payload.tread_depth = depth;
+            }
+          }
+        }
+
+        if (field.type === InspectionImageType.ELECTRICAL) {
+          payload.is_power = fieldData.electrical_type === "electric";
         }
 
         images.push(payload);
       });
     };
 
-    processFields(exteriorFields);
-    processFields(engineAndTransmissionFields);
+    processFields(ExteriorFields);
+    processFields(EngineAndTransmissionFields);
+    processFields(SteeringSuspensionAndBrakesFields);
+    processFields(AirConditioningFields);
+    processFields(ElectricalFields);
+    processFields(InteriorFields);
+    processFields(SeatsFields);
 
     return {
       images,
@@ -478,29 +574,110 @@ const CarInspectionForm = () => {
     };
   };
 
-  const handleNextSection = async () => {
+  const handleSave = async (formValues: InspectionFormData) => {
     if (!carId) {
       toast.error("Car ID is missing");
-      return;
+      return false;
     }
 
-    setIsSaving(true);
     try {
-      const formValues = watch();
       const payload = transformFormDataToPayload(formValues);
       const response = await saveInspectionProcess(carId, payload);
 
-      if (response?.code === 200) {
-        toast.success("Draft saved successfully");
-        setCurrentSection((prev) => prev + 1);
-      } else {
-        toast.error(response?.message || "Failed to save draft");
+      if (response?.code === 200 || response?.success) {
+        return true;
       }
+      toast.error(response?.message || "Operation failed");
+      return false;
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || "An error occurred while saving draft");
+      toast.error(error?.response?.data?.message || error?.message || "An error occurred");
+      return false;
+    }
+  };
+
+  const handleNextSection = async () => {
+    setIsSaving(true);
+    try {
+      const formValues = watch();
+      const success = await handleSave(formValues);
+      if (success) {
+        toast.success("Draft saved successfully");
+      }
+      setCurrentSection((prev) => prev + 1);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const findFieldByTypeSubtype = (type: number, subtype: number) => {
+    const allFields = [
+      ...ExteriorFields,
+      ...EngineAndTransmissionFields,
+      ...SteeringSuspensionAndBrakesFields,
+      ...AirConditioningFields,
+      ...ElectricalFields,
+      ...InteriorFields,
+      ...SeatsFields,
+    ];
+    return allFields.find(field => field.type === type && field.sub_type === subtype);
+  };
+
+  const getSectionForType = (type: number): number => {
+    if (type === 1) return 1;
+    if (type === 3) return 2;
+    if ([4, 5, 6, 7, 8].includes(type)) return 3;
+    return 1;
+  };
+
+  const getErrorsForType = (type: number) => {
+    return validationErrors.filter(err => err.type === type);
+  };
+
+  const getFieldError = (type: number, subtype: number) => {
+    return validationErrors.find(err => err.type === type && err.subtype === subtype);
+  };
+
+  const getFieldLabelForError = (type: number, subtype: number, errorName?: string): string => {
+    const field = findFieldByTypeSubtype(type, subtype);
+    if (field?.label) {
+      return field.label;
+    }
+
+    const typeNames = IMAGE_SUBTYPE_NAMES[type as keyof typeof IMAGE_SUBTYPE_NAMES];
+    if (typeNames && subtype in typeNames) {
+      return typeNames[subtype as keyof typeof typeNames];
+    }
+
+    if (errorName && errorName !== `Unknown (${subtype})`) {
+      return errorName;
+    }
+
+    return `Type ${type}, Subtype ${subtype}`;
+  };
+
+  const handleError = (errorResponse: any) => {
+    const errors = errorResponse?.errors;
+    if (errors && Array.isArray(errors)) {
+      const missingImagesError = errors.find(
+        (err: any) => err.code === "MISSING_REQUIRED_IMAGES" && err.details?.missing
+      );
+      if (missingImagesError?.details?.missing) {
+        const missingImages = missingImagesError.details.missing.map((img: any) => ({
+          type: img.type,
+          subtype: img.subtype,
+          name: img.name || `Type ${img.type}, Subtype ${img.subtype}`
+        }));
+        setValidationErrors(missingImages);
+        toast.error(`Missing ${missingImagesError.details.count} required image(s). Please check the sections below.`);
+        const firstError = missingImagesError.details.missing[0];
+        if (firstError) {
+          const sectionIndex = getSectionForType(firstError.type);
+          setCurrentSection(sectionIndex);
+        }
+        return;
+      }
+    }
+    toast.error(errorResponse?.message || "Failed to complete inspection");
   };
 
   const onSubmit = async (data: InspectionFormData) => {
@@ -510,22 +687,62 @@ const CarInspectionForm = () => {
     }
 
     setIsSubmitting(true);
-    try {
-      const payload = transformFormDataToPayload(data);
-      const response = await saveInspectionProcess(carId, payload);
+    setValidationErrors([]);
 
-      if (response?.code === 200) {
-        toast.success("Inspection form submitted successfully!");
+    try {
+      const success = await handleSave(data);
+      if (!success) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      const response = await completeInspection(carId);
+      const errorData = response?.response?.data || (response?.code && response.code !== 200 ? response : null) || (response?.errors && Array.isArray(response.errors) ? response : null);
+
+      if (response?.code === 200 && !errorData) {
+        toast.success("Inspection completed successfully!");
         router.push("/inspector/inspectorDashboard");
+        return;
+      }
+
+      if (errorData) {
+        handleError(errorData);
       } else {
-        toast.error(response?.message || "Failed to submit inspection form");
+        toast.error("Failed to complete inspection");
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || "Failed to submit inspection form. Please try again.");
+      handleError(error?.response?.data || error);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoadingInspection && carId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <LoadingSpinner />
+          <p className="text-slate-600">Loading inspection details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isInspectionError && carId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-red-600">Failed to load inspection details</p>
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+          >
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -626,14 +843,40 @@ const CarInspectionForm = () => {
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                <div className="grid grid-cols-1 gap-4">
                   <TextInput
                     name="registration_number"
                     control={control}
                     label="Registration Number"
-                    placeholder="Enter registration number"
+                    placeholder="GJ-05-HV-1234"
                     required
                     error={errors.registration_number}
+                    rules={{
+                      required: "Registration number is required",
+                      pattern: {
+                        value: /^[A-Z]{2}-[0-9]{2}-[A-Z]{2}-[0-9]{4}$/i,
+                        message: "Please enter a valid registration number (e.g., GJ-05-HV-1234)"
+                      }
+                    }}
+                    onChange={(value) => {
+                      const cleaned = value.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                      const letters = cleaned.match(/[A-Z]/g) || [];
+                      const digits = cleaned.match(/[0-9]/g) || [];
+
+                      const parts = [
+                        letters.slice(0, 2).join(''),
+                        digits.slice(0, 2).join(''),
+                        letters.slice(2, 4).join(''),
+                        digits.slice(2, 6).join('')
+                      ];
+
+                      let formatted = parts[0];
+                      if (parts[1]) formatted += '-' + parts[1];
+                      if (parts[2]) formatted += '-' + parts[2];
+                      if (parts[3]) formatted += '-' + parts[3];
+
+                      setValue("registration_number", formatted);
+                    }}
                   />
                   <TextInput
                     name="registartion_year"
@@ -704,17 +947,30 @@ const CarInspectionForm = () => {
                 </div>
 
                 <div className="space-y-6">
-                  {exteriorFields.map((field) => (
-                    <InspectionField
-                      key={field.name}
-                      name={field.name}
-                      control={control}
-                      label={field.label}
-                      fieldType={field.fieldType}
-                      uploadLabel={field.uploadLabel}
-                      setValue={setValue}
-                    />
-                  ))}
+                  {ExteriorFields.map((field) => {
+                    const fieldValidationError = getFieldError(field.type, field.sub_type);
+                    return (
+                      <div key={field.name}>
+                        <InspectionField
+                          name={field.name}
+                          control={control}
+                          label={field.label}
+                          fieldType={field.fieldType}
+                          uploadLabel={field.uploadLabel}
+                          setValue={setValue}
+                          type={field.type}
+                          sub_type={field.sub_type}
+                          error={errors[field.name as keyof typeof errors] as FieldError}
+                        />
+                        {fieldValidationError && (
+                          <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="font-medium">Missing required image: {getFieldLabelForError(fieldValidationError.type, fieldValidationError.subtype)}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -732,17 +988,30 @@ const CarInspectionForm = () => {
                 </div>
 
                 <div className="space-y-6">
-                  {engineAndTransmissionFields.map((field) => (
-                    <InspectionField
-                      key={field.name}
-                      name={field.name}
-                      control={control}
-                      label={field.label}
-                      fieldType={field.fieldType}
-                      uploadLabel={field.uploadLabel}
-                      setValue={setValue}
-                    />
-                  ))}
+                  {EngineAndTransmissionFields.map((field) => {
+                    const fieldValidationError = getFieldError(field.type, field.sub_type);
+                    return (
+                      <div key={field.name}>
+                        <InspectionField
+                          name={field.name}
+                          control={control}
+                          label={field.label}
+                          fieldType={field.fieldType}
+                          uploadLabel={field.uploadLabel}
+                          setValue={setValue}
+                          type={field.type}
+                          sub_type={field.sub_type}
+                          error={errors[field.name as keyof typeof errors] as FieldError}
+                        />
+                        {fieldValidationError && (
+                          <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="font-medium">Missing required image: {getFieldLabelForError(fieldValidationError.type, fieldValidationError.subtype)}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -751,13 +1020,219 @@ const CarInspectionForm = () => {
             {currentSection === 3 && (
               <div className="space-y-5">
 
+                {/* Steering, Suspension and Brakes */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-1.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
+                      <ShipWheel className="h-4 w-4 text-white" />
+                    </div>
+                    <h2 className="text-lg font-bold text-primary-700">
+                      Steering, Suspension and Brakes
+                    </h2>
+                  </div>
+                  <div className="space-y-6">
+                    {SteeringSuspensionAndBrakesFields.map((field) => {
+                      const fieldValidationError = getFieldError(field.type, field.sub_type);
+                      return (
+                        <div key={field.name}>
+                          <InspectionField
+                            name={field.name}
+                            control={control}
+                            label={field.label}
+                            fieldType={field.fieldType}
+                            uploadLabel={field.uploadLabel}
+                            setValue={setValue}
+                            type={field.type}
+                            sub_type={field.sub_type}
+                            error={errors[field.name as keyof typeof errors] as FieldError}
+                          />
+                          {fieldValidationError && (
+                            <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="font-medium">Missing required image: {getFieldLabelForError(fieldValidationError.type, fieldValidationError.subtype, fieldValidationError.name)}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Air Conditioning */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-1.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
+                      <AirVent className="h-4 w-4 text-white" />
+                    </div>
+                    <h2 className="text-lg font-bold text-primary-700">
+                      Air Conditioning
+                    </h2>
+                  </div>
+                  <div className="space-y-6">
+                    {AirConditioningFields.map((field) => {
+                      const fieldValidationError = getFieldError(field.type, field.sub_type);
+                      return (
+                        <div key={field.name}>
+                          <InspectionField
+                            name={field.name}
+                            control={control}
+                            label={field.label}
+                            fieldType={field.fieldType}
+                            uploadLabel={field.uploadLabel}
+                            setValue={setValue}
+                            type={field.type}
+                            sub_type={field.sub_type}
+                            error={errors[field.name as keyof typeof errors] as FieldError}
+                          />
+                          {fieldValidationError && (
+                            <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="font-medium">Missing required image: {getFieldLabelForError(fieldValidationError.type, fieldValidationError.subtype, fieldValidationError.name)}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Electrical */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-1.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
+                      <Plug className="h-4 w-4 text-white" />
+                    </div>
+                    <h2 className="text-lg font-bold text-primary-700">
+                      Electrical
+                    </h2>
+                  </div>
+                  <div className="space-y-6">
+                    {ElectricalFields.map((field) => {
+                      const fieldValidationError = getFieldError(field.type, field.sub_type);
+                      return (
+                        <div key={field.name}>
+                          <InspectionField
+                            name={field.name}
+                            control={control}
+                            label={field.label}
+                            fieldType={field.fieldType}
+                            uploadLabel={field.uploadLabel}
+                            setValue={setValue}
+                            type={field.type}
+                            sub_type={field.sub_type}
+                            error={errors[field.name as keyof typeof errors] as FieldError}
+                          />
+                          {fieldValidationError && (
+                            <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="font-medium">Missing required image: {getFieldLabelForError(fieldValidationError.type, fieldValidationError.subtype, fieldValidationError.name)}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Interior */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-1.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
+                      <SquareStack className="h-4 w-4 text-white" />
+                    </div>
+                    <h2 className="text-lg font-bold text-primary-700">
+                      Interior
+                    </h2>
+                  </div>
+                  <div className="space-y-6">
+                    {InteriorFields.map((field) => {
+                      const fieldValidationError = getFieldError(field.type, field.sub_type);
+                      return (
+                        <div key={field.name}>
+                          <InspectionField
+                            name={field.name}
+                            control={control}
+                            label={field.label}
+                            fieldType={field.fieldType}
+                            uploadLabel={field.uploadLabel}
+                            setValue={setValue}
+                            type={field.type}
+                            sub_type={field.sub_type}
+                            error={errors[field.name as keyof typeof errors] as FieldError}
+                          />
+                          {fieldValidationError && (
+                            <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="font-medium">Missing required image: {getFieldLabelForError(fieldValidationError.type, fieldValidationError.subtype, fieldValidationError.name)}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Seats */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-1.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
+                      <RockingChair className="h-4 w-4 text-white" />
+                    </div>
+                    <h2 className="text-lg font-bold text-primary-700">
+                      Seats
+                    </h2>
+                  </div>
+                  <div className="space-y-6">
+                    {SeatsFields.map((field) => (
+                      <InspectionField
+                        key={field.name}
+                        name={field.name}
+                        control={control}
+                        label={field.label}
+                        fieldType={field.fieldType}
+                        uploadLabel={field.uploadLabel}
+                        setValue={setValue}
+                        type={field.type}
+                        sub_type={field.sub_type}
+                        error={errors[field.name as keyof typeof errors] as FieldError}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Error Messages for Seats */}
+                  {getErrorsForType(8).length > 0 && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start gap-2 mb-2">
+                        <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                        <h3 className="text-sm font-semibold text-red-900">Missing Required Images</h3>
+                      </div>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                        {getErrorsForType(8).map((error, idx) => (
+                          <li key={idx}>{getFieldLabelForError(error.type, error.subtype, error.name)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
               </div>
             )}
 
             {/* Section 5: Overall Assessment */}
             {currentSection === 4 && (
               <div className="space-y-5">
-
+                <InspectionSummary
+                  formValues={watch()}
+                  allFields={{
+                    exterior: ExteriorFields,
+                    engine: EngineAndTransmissionFields,
+                    mechanical: SteeringSuspensionAndBrakesFields,
+                    ac: AirConditioningFields,
+                    electrical: ElectricalFields,
+                    interior: InteriorFields,
+                    seats: SeatsFields,
+                  }}
+                />
               </div>
             )}
 
@@ -768,7 +1243,7 @@ const CarInspectionForm = () => {
                 variant="outline"
                 onClick={() => setCurrentSection((prev) => Math.max(0, prev - 1))}
                 disabled={currentSection === 0}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 mt-4"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Previous

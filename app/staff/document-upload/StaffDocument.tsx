@@ -15,22 +15,25 @@ const statusConfig: any = {
   4: { label: "Rejected", bg: "bg-red-100", text: "text-red-700" },
 };
 
-const InspectorDocument = () => {
+const StaffDocument = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [documentStatus, setDocumentStatus] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [remarks, setRemarks] = useState<string>("");
+  const [submitError, setSubmitError] = useState<string>("");
   
   const { control, watch, setValue, formState: { errors } } = useForm({
     defaultValues: { aadhaar: "", pan: "" }
   });
 
   const [uploadedFiles, setUploadedFiles] = useState({
-    profilePhoto: "",
-    aadhaarFront: "",
-    aadhaarBack: "",
-    panFront: "",
+    document: {
+      profilePhoto: "",
+      aadhaarFront: "",
+      aadhaarBack: "",
+      panFront: "",
+    }
   });
 
   const aadhaar = watch("aadhaar");
@@ -39,23 +42,41 @@ const InspectorDocument = () => {
   const isPanValid = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan?.toUpperCase() || "");
   const status = statusConfig[documentStatus];
 
-  const handleFileUpload = (fileUrl: string, field: keyof typeof uploadedFiles) => {
-    setUploadedFiles((prev) => ({ ...prev, [field]: fileUrl }));
+  const handleFileUpload = (fileUrl: string, field: keyof typeof uploadedFiles.document) => {
+    setUploadedFiles((prev) => ({ ...prev, document: { ...prev.document, [field]: fileUrl } }));
   };
 
   useEffect(() => {
+    // Initialize document status from URL params or user data
     const statusParam = searchParams.get("status");
     if (statusParam) {
       const status = parseInt(statusParam, 10);
       setDocumentStatus(status);
       if (status === 3) {
-        router.push("/inspector/inspectorDashboard");
+        router.push("/staff/staffDashboard");
+      }
+    } else {
+      // If no status param, get from user data
+      try {
+        const authData = localStorage.getItem("adminpro-auth");
+        if (authData) {
+          const { user } = JSON.parse(authData);
+          if (user?.documentStatus) {
+            setDocumentStatus(user.documentStatus);
+            if (user.documentStatus === 3) {
+              router.push("/staff/staffDashboard");
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error loading document status:", error);
       }
     }
   }, [searchParams, router]);
 
   useEffect(() => {
-    if (documentStatus !== 4) return;
+    // Load user document data for status 1 (pending) and 4 (rejected)
+    if (documentStatus !== 1 && documentStatus !== 4) return;
     
     try {
       const authData = localStorage.getItem("adminpro-auth");
@@ -72,10 +93,12 @@ const InspectorDocument = () => {
       }
       
       setUploadedFiles({
-        profilePhoto: user.selfieImage || "",
-        aadhaarFront: user.aadharFrontImage || "",
-        aadhaarBack: user.aadharBackImage || "",
-        panFront: user.panImage || "",
+        document: {
+          profilePhoto: user.selfieImage || "",
+          aadhaarFront: user.aadharFrontImage || "",
+          aadhaarBack: user.aadharBackImage || "",
+          panFront: user.panImage || "",
+        }
       });
       
       if (user.remarks || user.rejectionRemarks) {
@@ -87,8 +110,8 @@ const InspectorDocument = () => {
   }, [documentStatus, setValue]);
 
   const Header = () => (
-    <div className="z-10 bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-5 shadow">
-      <h1 className="text-white text-xl font-semibold">Inspector Dashboard</h1>
+    <div className="z-10 bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-5 shadow rounded-t-2xl">
+      <h1 className="text-white text-xl font-semibold">Staff Dashboard</h1>
       <p className="text-indigo-100 text-sm">KYC Verification</p>
       <span className={`inline-block mt-2 px-4 py-1 rounded-full text-sm font-medium ${status.bg} ${status.text}`}>
         {status.label}
@@ -131,12 +154,13 @@ const InspectorDocument = () => {
   if (documentStatus !== 1 && documentStatus !== 4) return null;
 
   const handleUpload = async () => {
+    setSubmitError("");
     if (!isAadhaarValid || !isPanValid) {
       toast.error("Please fill all required fields correctly");
       return;
     }
 
-    if (!uploadedFiles.profilePhoto || !uploadedFiles.aadhaarFront || !uploadedFiles.aadhaarBack || !uploadedFiles.panFront) {
+    if (!uploadedFiles.document?.profilePhoto || !uploadedFiles.document?.aadhaarFront || !uploadedFiles.document?.aadhaarBack || !uploadedFiles.document?.panFront) {
       toast.error("Please upload all required documents");
       return;
     }
@@ -145,12 +169,12 @@ const InspectorDocument = () => {
 
     try {
       const payload = {
-        selfieImage: uploadedFiles.profilePhoto,
+        selfieImage: uploadedFiles.document?.profilePhoto,
         aadharCardNo: aadhaar,
         panCardNo: pan.toUpperCase(),
-        aadharCardFrontImage: uploadedFiles.aadhaarFront,
-        aadharCardBackImage: uploadedFiles.aadhaarBack,
-        panCardImage: uploadedFiles.panFront,
+        aadharCardFrontImage: uploadedFiles.document?.aadhaarFront,
+        aadharCardBackImage: uploadedFiles.document?.aadhaarBack,
+        panCardImage: uploadedFiles.document?.panFront,
       };
 
       const response = await submitDocumentDetails(payload);
@@ -158,7 +182,7 @@ const InspectorDocument = () => {
       if (response && (response.success || response.code === 200)) {
         toast.success("Documents submitted successfully!");
         setDocumentStatus(2);
-        router.push("/inspector/document-upload?status=2");
+        router.push("/staff/document-upload?status=2");
       } else {
         throw new Error(response?.message || "Failed to submit documents");
       }
@@ -166,13 +190,14 @@ const InspectorDocument = () => {
       console.error("Error submitting documents:", error);
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to submit documents. Please try again.";
       toast.error(errorMessage);
+      setSubmitError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 rounded-2xl">
       <Header />
 
       <div className="max-w-4xl mx-auto px-4 pb-10 space-y-6">
@@ -200,7 +225,7 @@ const InspectorDocument = () => {
           <UploadBox 
             label="Upload Profile Picture" 
             onUploadComplete={(url) => handleFileUpload(url, "profilePhoto")}
-            existingImage={uploadedFiles.profilePhoto}
+            existingImage={uploadedFiles.document?.profilePhoto}
           />
         </div>
 
@@ -226,12 +251,12 @@ const InspectorDocument = () => {
             <UploadBox 
               onUploadComplete={(url) => handleFileUpload(url, "aadhaarFront")} 
               label="Front Side"
-              existingImage={uploadedFiles.aadhaarFront}
+              existingImage={uploadedFiles.document?.aadhaarFront}
             />
             <UploadBox 
               onUploadComplete={(url) => handleFileUpload(url, "aadhaarBack")} 
               label="Back Side"
-              existingImage={uploadedFiles.aadhaarBack}
+              existingImage={uploadedFiles.document?.aadhaarBack}
             />
           </div>
         </div>
@@ -276,15 +301,20 @@ const InspectorDocument = () => {
           <UploadBox 
             onUploadComplete={(url) => handleFileUpload(url, "panFront")} 
             label="PAN Card Photo"
-            existingImage={uploadedFiles.panFront}
+            existingImage={uploadedFiles.document?.panFront}
           />
         </div>
 
         {/* Save Button */}
-        <div className="bg-white rounded-2xl p-5 shadow">
+        <div className="bg-white rounded-2xl p-5 shadow text-center space-y-3">
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+              {submitError}
+            </div>
+          )}
           <button
             disabled={!isAadhaarValid || !isPanValid || isSubmitting}
-            className={`w-full py-2 rounded-xl font-semibold transition ${isAadhaarValid && isPanValid && !isSubmitting
+            className={`w-full sm:w-auto py-2 px-10 rounded-xl font-semibold transition ${isAadhaarValid && isPanValid && !isSubmitting
                 ? "bg-green-600 text-white hover:bg-green-700"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
@@ -298,4 +328,5 @@ const InspectorDocument = () => {
   );
 };
 
-export default InspectorDocument;
+export default StaffDocument;
+

@@ -2,6 +2,7 @@
 
 import { Minus, Plus, RotateCcw, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type ImagePreviewProps = {
   src: string;
@@ -14,7 +15,12 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const minZoom = 1;
   const maxZoom = 3;
@@ -39,8 +45,8 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
   }, [isOpen]);
 
   const clampZoom = useCallback((value: number) => {
-    return Math.min(maxZoom, Math.max(minZoom, Number(value.toFixed(2))));
-  }, []);
+    return Math.min(maxZoom, Math.max(minZoom, parseFloat(value.toFixed(2))));
+  }, [maxZoom, minZoom]);
 
   const adjustZoom = useCallback((delta: number) => {
     setZoom((prev) => {
@@ -103,32 +109,26 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
     setOffset({ x: 0, y: 0 });
   }, []);
 
-  return (
-    <>
-      <img
-        src={src}
-        alt={alt}
-        className={(className ?? '') + ' cursor-zoom-in transition-transform duration-200 hover:scale-[1.02]'}
-        onClick={() => setIsOpen(true)}
-        style={{ objectFit: "cover" }}
-      />
-
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ 
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(8px)',
-          }}
-          onClick={() => setIsOpen(false)}
-          aria-modal="true"
-          role="dialog"
-        >
+  const modalContent = isOpen && mounted ? (
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center"
+      style={{ 
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        backdropFilter: 'blur(8px)',
+      }}
+      onClick={() => setIsOpen(false)}
+      aria-modal="true"
+      role="dialog"
+    >
           {/* Close Button - Top Right */}
           <button
             type="button"
-            onClick={() => setIsOpen(false)}
-            className="absolute top-6 right-6 z-10 flex items-center justify-center h-10 w-10 rounded-full bg-gray-900/90 backdrop-blur-md text-white hover:bg-gray-800 transition-all duration-200 hover:scale-110 border border-gray-700/50 shadow-lg"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setIsOpen(false);
+            }}
+            className="absolute top-4 right-4 z-[100] flex items-center justify-center h-10 w-10 rounded-full bg-gray-900/90 backdrop-blur-md text-white hover:bg-gray-800 transition-all duration-200 hover:scale-110 border border-gray-700/50 shadow-lg pointer-events-auto"
             aria-label="Close preview"
           >
             <X className="h-5 w-5" />
@@ -136,7 +136,7 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
 
           {/* Image Container */}
           <div
-            className="relative w-full h-full flex items-center justify-center p-8"
+            className="relative w-full h-full flex items-center justify-center p-4 sm:p-8"
             onClick={(e) => e.stopPropagation()}
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
@@ -148,14 +148,21 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
               src={src}
               alt={alt}
               draggable={false}
-              className="select-none max-w-full max-h-full object-contain"
-              style={imageTransform}
+              className="select-none"
+              style={{
+                ...imageTransform,
+                maxWidth: 'calc(100vw - 2rem)',
+                maxHeight: 'calc(100vh - 8rem)',
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+              }}
             />
           </div>
 
           {/* Floating Controls - Bottom Center */}
           <div 
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-900/90 backdrop-blur-md border border-gray-700/50 shadow-2xl"
+            className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-900/90 backdrop-blur-md border border-gray-700/50 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -197,9 +204,18 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
             </button>
           </div>
         </div>
-      )}
+  ) : null;
+
+  return (
+    <>
+      <img
+        src={src}
+        alt={alt}
+        className={(className ?? '') + ' cursor-zoom-in transition-transform duration-200 hover:scale-[1.02]'}
+        onClick={() => setIsOpen(true)}
+        style={{ objectFit: "cover" }}
+      />
+      {mounted && createPortal(modalContent, document.body)}
     </>
   );
 }
-
-

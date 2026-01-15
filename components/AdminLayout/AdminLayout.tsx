@@ -54,12 +54,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         } else if (roleId === 3) {
           router.push('/inspector/inspectorDashboard');
         }
+        else if (roleId === 4) {
+          router.push('/staff/staffDashboard');
+        }
       } else if (pathname.startsWith('/manager/') && roleId !== 2) {
         toast.error('You are not allowed to access the manager area.');
         if (roleId === 1) {
           router.push('/admin/adminDashboard');
         } else if (roleId === 3) {
           router.push('/inspector/inspectorDashboard');
+        } else if (roleId === 4) {
+          router.push('/staff/staffDashboard');
         }
       } else if (pathname.startsWith('/inspector/') && roleId !== 3) {
         toast.error('You are not allowed to access the inspector area.');
@@ -67,6 +72,23 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           router.push('/admin/adminDashboard');
         } else if (roleId === 2) {
           router.push('/manager/managerDashboard');
+        } else if (roleId === 4) {
+          router.push('/staff/staffDashboard');
+        } else if (roleId === 2) {
+          router.push('/manager/managerDashboard');
+        } else if (roleId === 1) {
+          router.push('/admin/adminDashboard');
+        }
+      } else if (pathname.startsWith('/staff/') && roleId !== 4) {
+        toast.error('You are not allowed to access the staff area.');
+        if (roleId === 1) {
+          router.push('/admin/adminDashboard');
+        } else if (roleId === 2) {
+          router.push('/manager/managerDashboard');
+        } else if (roleId === 3) {
+          router.push('/inspector/inspectorDashboard');
+        } else if (roleId === 1) {
+          router.push('/admin/adminDashboard');
         }
       }
     }
@@ -82,7 +104,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const adminRouteMap: { [key: string]: string } = {
       'adminDashboard': '/admin/adminDashboard',
       'users': '/admin/users',
-      'staff': '/admin/staff',
+      'staff': '/admin/adminStaff',
       'inspectionCenter': '/admin/inspectionCenter',
       'car': '/admin/car',
       'products': '/admin/products',
@@ -107,6 +129,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       'notifications': '/inspector/notifications',
     };
 
+    const staffRouteMap: { [key: string]: string } = {
+      'staffDashboard': '/staff/staffDashboard',
+      'car': '/staff/carList',
+      'carList': '/staff/carList',
+      'profile': '/staff/profile',
+      'notifications': '/staff/notifications',
+    };
+
     let routeMap: { [key: string]: string };
     let defaultRoute: string;
 
@@ -122,6 +152,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       case 3: // Inspector
         routeMap = inspectorRouteMap;
         defaultRoute = '/inspector/inspectorDashboard';
+        break;
+      case 4: // Staff
+        routeMap = staffRouteMap;
+        defaultRoute = '/staff/staffDashboard';
         break;
       default:
         routeMap = adminRouteMap;
@@ -143,6 +177,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       pagePath = pathname.replace('/manager/', '');
     } else if (pathname.startsWith('/inspector/')) {
       pagePath = pathname.replace('/inspector/', '');
+    } else if (pathname.startsWith('/staff/')) {
+      pagePath = pathname.replace('/staff/', '');
     } else {
       pagePath = pathname.replace(/^\//, '');
     }
@@ -151,6 +187,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     if (pagePath === 'adminDashboard') return 'adminDashboard';
     if (pagePath === 'managerDashboard') return 'managerDashboard';
     if (pagePath === 'inspectorDashboard') return 'inspectorDashboard';
+    if (pagePath === 'staffDashboard') return 'staffDashboard';
     
     const baseRoute = pagePath.split('/')[0];
     
@@ -158,7 +195,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const adminRouteMap: { [key: string]: string } = {
       'car': 'car',
       'inspectionCenter': 'inspectionCenter',
-      'staff': 'staff',
+      'adminStaff': 'staff',
       'users': 'users',
       'products': 'products',
       'profile': 'profile',
@@ -182,6 +219,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       'notifications': 'notifications',
     };
     
+    // Staff routes
+    const staffRouteMap: { [key: string]: string } = {
+      'carList': 'car',
+      'car': 'car',
+      'staffInspection': 'car',
+      'profile': 'profile',
+      'notifications': 'notifications',
+    };
+    
     // Return based on role
     if (roleId === 1) {
       // Admin
@@ -201,6 +247,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         return inspectorRouteMap[baseRoute];
       }
       return 'inspectorDashboard';
+    } else if (roleId === 4) {
+      // Staff
+      if (staffRouteMap[baseRoute]) {
+        return staffRouteMap[baseRoute];
+      }
+      return 'staffDashboard';
     }
     
     // Default fallback
@@ -225,6 +277,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       if (roleId === 1) dashboardRoute = '/admin/adminDashboard';
       if (roleId === 2) dashboardRoute = '/manager/managerDashboard';
       if (roleId === 3) dashboardRoute = '/inspector/inspectorDashboard';
+      if (roleId === 4) dashboardRoute = '/staff/staffDashboard';
       
       return {
         showBackButton: true,
@@ -265,7 +318,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   const roleId = authState.user?.roleId;
-  const isMobileOnlyRole = roleId === 2 || roleId === 3;
+  const isMobileOnlyRole = roleId === 2 || roleId === 3; // Manager and Inspector are mobile-only, Staff (4) is full screen like Admin
   
   if (isMobileOnlyRole && isLargeScreen) {
     return (
@@ -346,6 +399,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               router.push('/managerNotifications');
             } else if (roleId === 3) {
               router.push('/inspectorNotifications');
+            } else if (roleId === 4) {
+              router.push('/staffNotifications');
             } else {
               router.push('/adminNotifications');
             }
