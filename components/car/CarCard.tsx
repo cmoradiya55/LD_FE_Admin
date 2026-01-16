@@ -23,6 +23,8 @@ interface CarCardProps {
     onFavoriteClick?: (e: React.MouseEvent, carId: string) => void;
     showStatusBadge?: boolean;
     statusBadgeText?: string;
+    statusBadgeColor?: string;
+    statusBadgeIcon?: React.ReactNode;
     className?: string;
 }
 
@@ -34,6 +36,8 @@ const CarCard: React.FC<CarCardProps> = ({
     onFavoriteClick,
     showStatusBadge = false,
     statusBadgeText,
+    statusBadgeColor,
+    statusBadgeIcon,
     className = "",
 }) => {
     const handleClick = () => {
@@ -95,17 +99,10 @@ const CarCard: React.FC<CarCardProps> = ({
                         {/* Status Badge (used by Manager lists) */}
                         {showStatusBadge && statusBadgeText && (
                             <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20">
-                                {statusBadgeText.includes("Completed") ? (
-                                    <div className="flex items-center gap-1.5 bg-green-500 text-white px-2 py-1 rounded-full shadow-lg">
-                                        <CheckCircle2 className="h-3 w-3" />
-                                        <span className="text-[11px] font-semibold">{statusBadgeText}</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-1.5 bg-amber-500 text-white px-2 py-1 rounded-full shadow-lg">
-                                        <Clock className="h-3 w-3" />
-                                        <span className="text-[11px] font-semibold">{statusBadgeText}</span>
-                                    </div>
-                                )}
+                                <div className={`flex items-center gap-1.5 ${statusBadgeColor || 'bg-gray-500'} text-white px-2 py-1 rounded-full shadow-lg`}>
+                                    {statusBadgeIcon || <Clock className="h-3 w-3" />}
+                                    <span className="text-[11px] font-semibold">{statusBadgeText}</span>
+                                </div>
                             </div>
                         )}
                     </div>

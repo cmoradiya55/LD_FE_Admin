@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Control, Controller, FieldError, useWatch, useFormContext, UseFormSetValue } from "react-hook-form";
 import { AlertCircle, CheckCircle2, Sparkles, AlertTriangle, Check, Notebook, ChevronDown, ChevronUp, LifeBuoy } from "lucide-react";
 import { TreadDepthEnum, isImageRequired } from "@/lib/data";
@@ -234,7 +234,7 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
                 setVideoUrl("");
             }
         }
-    }, [imageFieldValue, fieldObjectValue?.image, imageUrl, name, useVideoUpload]);
+    }, [imageFieldValue, fieldObjectValue?.image, name, useVideoUpload]);
 
     useEffect(() => {
         if (useVideoUpload) {
@@ -245,7 +245,7 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
                 setVideoUrl("");
             }
         }
-    }, [imageFieldValue, fieldObjectValue?.image, videoUrl, name, useVideoUpload]);
+    }, [imageFieldValue, fieldObjectValue?.image, name, useVideoUpload]);
 
     useEffect(() => {
         const remarksFromForm = remarksFieldValue !== undefined ? remarksFieldValue : fieldObjectValue?.remarks;
@@ -265,14 +265,14 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
             
             setRemarks(formRemarks);
         }
-    }, [remarksFieldValue, fieldObjectValue?.remarks, remarks, name, autoRemarks]);
+    }, [remarksFieldValue, fieldObjectValue?.remarks, name, autoRemarks]);
 
     useEffect(() => {
         const damageFromForm = damageFieldValue || fieldObjectValue?.damage;
         if (damageFromForm && damageFromForm !== damageValue) {
             setDamageValue(damageFromForm);
         }
-    }, [damageFieldValue, fieldObjectValue?.damage, damageValue, name]);
+    }, [damageFieldValue, fieldObjectValue?.damage, name]);
 
     useEffect(() => {
         if (useVideoUpload && existingImage) {
@@ -293,19 +293,36 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
         }
     }, [electricalTypeFieldValue]);
 
+    const engineOilLeakValue = fieldObjectValue?.engine_oil_leak;
+    const brokenValue = fieldObjectValue?.broken;
+    
+    const prevValuesRef = useRef<{ engineOilLeak?: string; broken?: string }>({});
+
     useEffect(() => {
-        if (fieldType === "engineOilLevelDipstick" && fieldObjectValue) {
-            const initialOptions: Record<string, boolean> = {};
-            engineOilLevelDipstickOptionsList.forEach((option) => {
-                if (option.id === "engine_oil_leak") {
-                    initialOptions[option.id] = fieldObjectValue.engine_oil_leak === "yes";
-                } else if (option.id === "broken") {
-                    initialOptions[option.id] = fieldObjectValue.broken === "yes";
-                }
-            });
-            setSelectedOptions(initialOptions);
+        if (fieldType === "engineOilLevelDipstick") {
+            const newEngineOilLeak = engineOilLeakValue === "yes";
+            const newBroken = brokenValue === "yes";
+            const prevEngineOilLeak = prevValuesRef.current.engineOilLeak === "yes";
+            const prevBroken = prevValuesRef.current.broken === "yes";
+            
+            if (prevEngineOilLeak !== newEngineOilLeak || prevBroken !== newBroken) {
+                const newOptions: Record<string, boolean> = {};
+                engineOilLevelDipstickOptionsList.forEach((option) => {
+                    if (option.id === "engine_oil_leak") {
+                        newOptions[option.id] = newEngineOilLeak;
+                    } else if (option.id === "broken") {
+                        newOptions[option.id] = newBroken;
+                    }
+                });
+                
+                setSelectedOptions(newOptions);
+                prevValuesRef.current = {
+                    engineOilLeak: engineOilLeakValue,
+                    broken: brokenValue,
+                };
+            }
         }
-    }, [fieldType, fieldObjectValue]);
+    }, [fieldType, engineOilLeakValue, brokenValue]);
 
     useEffect(() => {
         if (fieldType === "engineOilLevelDipstick" && setValue) {
@@ -318,7 +335,7 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
                 }
             });
         }
-    }, [selectedOptions, fieldType, name, setValue]);
+    }, [selectedOptions, fieldType, name]);
 
     const commonOptions: DamageOption[] = [
         { id: "dented", label: "Dented" },
@@ -398,6 +415,11 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
         return options;
     };
 
+    const isEngineFieldType = fieldType === "engine" || fieldType === "engineSound" || fieldType === "engineMounting" || fieldType === "clutch" || fieldType === "gearShifting" || fieldType === "engineOil" || fieldType === "battery" || fieldType === "coolant" || fieldType === "sump";
+    
+    const excludedFieldTypes = ["tyre", "steering", "brake", "suspension", "exhaust", "interior", "seats"];
+    const shouldShowOptions = !excludedFieldTypes.includes(fieldType);
+
     const getEngineOptions = (): DamageOption[] => {
         switch (fieldType) {
             case "engine":
@@ -419,10 +441,121 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
         }
     };
 
-    const isEngineFieldType = fieldType === "engine" || fieldType === "engineSound" || fieldType === "engineMounting" || fieldType === "clutch" || fieldType === "gearShifting" || fieldType === "engineOil" || fieldType === "battery" || fieldType === "coolant" || fieldType === "sump";
-    
-    const excludedFieldTypes = ["tyre", "steering", "brake", "suspension", "exhaust", "interior", "seats"];
-    const shouldShowOptions = !excludedFieldTypes.includes(fieldType);
+    const getAllAvailableOptions = (): DamageOption[] => {
+        if (fieldType === "electrical") {
+            if (electricalType === "manual") {
+                return electricalManualOptionsList;
+            } else if (electricalType === "electric") {
+                return electricalElectricOptionsList;
+            }
+            return [];
+        } else if (fieldType === "airCondition") {
+            return airConditionOptionsList;
+        } else if (fieldType === "electricalInterior") {
+            return electricalInteriorOptionsList;
+        } else if (fieldType === "engineOilLevelDipstick") {
+            return engineOilLevelDipstickOptionsList;
+        } else if (isEngineFieldType) {
+            return getEngineOptions();
+        } else {
+            return getDisplayOptions();
+        }
+    };
+
+    const syncOptionsFromRemarks = (remarksText: string) => {
+        if (!shouldShowOptions || damageValue !== "yes" || !setValue) return;
+
+        const availableOptions = getAllAvailableOptions();
+        const fullTextToMatch = remarksText.toLowerCase().trim();
+
+        if (isEngineFieldType) {
+            availableOptions.forEach((option) => {
+                const optionLabel = option.label.toLowerCase();
+                const regex = new RegExp(`\\b${optionLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+                const isMentioned = regex.test(fullTextToMatch);
+                
+                const currentValue = (() => {
+                    const watchedValuesMap: Record<string, string> = {
+                        "repaired": watchedEngineRepaired,
+                        "long_cranking": watchedEngineLongCranking,
+                        "electrical_wiring_damaged": watchedEngineElectricalWiring,
+                        "permissible_blow_by_on_idle": watchedEngineSoundBlowBy,
+                        "engine_sound": watchedEngineSound,
+                        "excess_vibration": watchedEngineMountingVibration,
+                        "engine_mounting_abnormal": watchedEngineMountingAbnormal,
+                        "hard": watchedClutchHard,
+                        "abnormal_noise_while_shifting": watchedGearShiftingNoise,
+                        "gear_shifting_hard": watchedGearShiftingHard,
+                        "front_drive_axle_noise": watchedGearShiftingAxle,
+                        "leaking": fieldType === "engineOil" ? watchedEngineOilLeaking : (fieldType === "coolant" ? watchedCoolantLeaking : (fieldType === "sump" ? watchedSumpLeaking : "")),
+                        "engine_oil_leak": watchedEngineOilLevelDipstickLeak,
+                        "damaged": fieldType === "battery" ? watchedBatteryDamaged : (fieldType === "sump" ? watchedSumpDamaged : ""),
+                        "low_charge": watchedBatteryLowCharge,
+                        "corroded": watchedBatteryCorroded,
+                        "low_level": watchedCoolantLowLevel,
+                        "contaminated": watchedCoolantContaminated,
+                    };
+                    return watchedValuesMap[option.id] || "";
+                })();
+
+                const shouldBeSelected = isMentioned;
+                const isCurrentlySelected = currentValue === "yes";
+
+                if (shouldBeSelected !== isCurrentlySelected) {
+                    setValue(`${name}.${option.id}` as any, shouldBeSelected ? "yes" : "no", { shouldValidate: false });
+                }
+            });
+        } else {
+            const newSelectedOptions: Record<string, boolean> = { ...selectedOptions };
+
+            availableOptions.forEach((option) => {
+                const optionLabel = option.label.toLowerCase();
+                const escapedLabel = optionLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`\\b${escapedLabel}\\b`, 'i');
+                const isMentioned = regex.test(fullTextToMatch);
+                
+                newSelectedOptions[option.id] = isMentioned;
+            });
+
+            const hasChanges = availableOptions.some(
+                (option) => newSelectedOptions[option.id] !== selectedOptions[option.id]
+            );
+
+            if (hasChanges) {
+                setSelectedOptions(newSelectedOptions);
+            }
+
+            if (fieldType === "orvm" && orvmType === "electrical" && setValue) {
+                const foldingMentioned = /\bfolding\s+mirror\s+(not\s+)?working\b/i.test(fullTextToMatch);
+                const foldingNotWorking = /\bfolding\s+mirror\s+not\s+working\b/i.test(fullTextToMatch);
+                const currentFoldingValue = foldingMirrorValue;
+                const shouldBeFoldingNo = foldingNotWorking;
+                const shouldBeFoldingYes = foldingMentioned && !foldingNotWorking;
+                
+                if (shouldBeFoldingNo && currentFoldingValue !== "no") {
+                    setValue(`${name}.folding_mirror_working` as any, "no", { shouldValidate: false });
+                } else if (shouldBeFoldingYes && currentFoldingValue !== "yes") {
+                    setValue(`${name}.folding_mirror_working` as any, "yes", { shouldValidate: false });
+                } else if (!foldingMentioned && currentFoldingValue === "no") {
+                    setValue(`${name}.folding_mirror_working` as any, "yes", { shouldValidate: false });
+                }
+
+                const motorMentioned = /\bmirror\s+adjust\s+motor\s+(not\s+)?working\b/i.test(fullTextToMatch);
+                const motorNotWorking = /\bmirror\s+adjust\s+motor\s+not\s+working\b/i.test(fullTextToMatch);
+                const currentMotorValue = mirrorMotorValue;
+                const shouldBeMotorNo = motorNotWorking;
+                const shouldBeMotorYes = motorMentioned && !motorNotWorking;
+                
+                if (shouldBeMotorNo && currentMotorValue !== "no") {
+                    setValue(`${name}.mirror_adjust_motor` as any, "no", { shouldValidate: false });
+                } else if (shouldBeMotorYes && currentMotorValue !== "yes") {
+                    setValue(`${name}.mirror_adjust_motor` as any, "yes", { shouldValidate: false });
+                } else if (!motorMentioned && currentMotorValue === "no") {
+                    setValue(`${name}.mirror_adjust_motor` as any, "yes", { shouldValidate: false });
+                }
+            }
+        }
+    };
 
     const threadDepthOptions = useMemo(() => [
         { value: TreadDepthEnum.LESS_THAN_3MM, label: "< 3 mm" },
@@ -438,37 +571,52 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
     useEffect(() => {
         if (damageValue === "yes") {
             const activeLabels: string[] = [];
+            const userRemarksLower = userRemarks.toLowerCase().trim();
+
+            // Helper function to check if label already exists in userRemarks
+            const isLabelInUserRemarks = (label: string): boolean => {
+                if (!userRemarksLower) return false;
+                const labelLower = label.toLowerCase();
+                const regex = new RegExp(`\\b${labelLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+                return regex.test(userRemarksLower);
+            };
 
             if (shouldShowOptions) {
 
                 if (fieldType === "electrical") {
                     if (electricalType === "manual") {
                         electricalManualOptionsList.forEach((option) => {
-                            if (selectedOptions[option.id]) {
+                            if (selectedOptions[option.id] && !isLabelInUserRemarks(option.label)) {
                                 activeLabels.push(option.label);
                             }
                         });
                     } else if (electricalType === "electric") {
                         electricalElectricOptionsList.forEach((option) => {
-                            if (selectedOptions[option.id]) {
+                            if (selectedOptions[option.id] && !isLabelInUserRemarks(option.label)) {
                                 activeLabels.push(option.label);
                             }
                         });
                     }
                 } else if (fieldType === "airCondition") {
-                    const selectedAirConditionOptions = airConditionOptionsList.filter((option) => selectedOptions[option.id]);
+                    const selectedAirConditionOptions = airConditionOptionsList.filter((option) => 
+                        selectedOptions[option.id] && !isLabelInUserRemarks(option.label)
+                    );
                     if (selectedAirConditionOptions.length > 0) {
                         const optionLabels = selectedAirConditionOptions.map((option) => option.label).join(", ");
                         activeLabels.push(`${label} ${optionLabels}`);
                     }
                 } else if (fieldType === "electricalInterior") {
-                    const selectedElectricalInteriorOptions = electricalInteriorOptionsList.filter((option) => selectedOptions[option.id]);
+                    const selectedElectricalInteriorOptions = electricalInteriorOptionsList.filter((option) => 
+                        selectedOptions[option.id] && !isLabelInUserRemarks(option.label)
+                    );
                     if (selectedElectricalInteriorOptions.length > 0) {
                         const optionLabels = selectedElectricalInteriorOptions.map((option) => option.label).join(", ");
                         activeLabels.push(`${label} ${optionLabels}`);
                     }
                 } else if (fieldType === "engineOilLevelDipstick") {
-                    const selectedEngineOilLevelDipstickOptions = engineOilLevelDipstickOptionsList.filter((option) => selectedOptions[option.id]);
+                    const selectedEngineOilLevelDipstickOptions = engineOilLevelDipstickOptionsList.filter((option) => 
+                        selectedOptions[option.id] && !isLabelInUserRemarks(option.label)
+                    );
                     if (selectedEngineOilLevelDipstickOptions.length > 0) {
                         const optionLabels = selectedEngineOilLevelDipstickOptions.map((option) => option.label).join(", ");
                         activeLabels.push(optionLabels);
@@ -498,22 +646,22 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
                     
                     engineOptions.forEach((option) => {
                         const optionValue = watchedValuesMap[option.id];
-                        if (optionValue === "yes") {
+                        if (optionValue === "yes" && !isLabelInUserRemarks(option.label)) {
                             activeLabels.push(option.label);
                         }
                     });
                 } else {
                     getDisplayOptions().forEach((option) => {
-                        if (selectedOptions[option.id]) {
+                        if (selectedOptions[option.id] && !isLabelInUserRemarks(option.label)) {
                             activeLabels.push(option.label);
                         }
                     });
 
                     if (fieldType === "orvm" && orvmType === "electrical") {
-                        if (foldingMirrorValue === "no") {
+                        if (foldingMirrorValue === "no" && !isLabelInUserRemarks("Folding Mirror Not Working")) {
                             activeLabels.push("Folding Mirror Not Working");
                         }
-                        if (mirrorMotorValue === "no") {
+                        if (mirrorMotorValue === "no" && !isLabelInUserRemarks("Mirror Adjust Motor Not Working")) {
                             activeLabels.push("Mirror Adjust Motor Not Working");
                         }
                     }
@@ -521,22 +669,25 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
             }
 
             const newAutoRemarks = activeLabels.join(", ");
+            const prevAutoRemarks = autoRemarks;
             setAutoRemarks(newAutoRemarks);
             
-            const combinedRemarks = newAutoRemarks 
-                ? (userRemarks ? `${newAutoRemarks}. ${userRemarks}` : newAutoRemarks)
-                : userRemarks;
-            
-            if (combinedRemarks !== remarks) {
-                setRemarks(combinedRemarks);
-                if (setValue) {
-                    setValue(`${name}.remarks` as any, combinedRemarks, { shouldValidate: true });
+            if (newAutoRemarks !== prevAutoRemarks) {
+                const combinedRemarks = newAutoRemarks 
+                    ? (userRemarks ? `${newAutoRemarks}. ${userRemarks}` : newAutoRemarks)
+                    : userRemarks;
+                
+                if (combinedRemarks !== remarks) {
+                    setRemarks(combinedRemarks);
+                    if (setValue) {
+                        setValue(`${name}.remarks` as any, combinedRemarks, { shouldValidate: true });
+                    }
                 }
             }
         } else if (damageValue === "no") {
             setAutoRemarks("");
         }
-    }, [selectedOptions, orvmType, electricalType, fieldType, damageValue, name, setValue, foldingMirrorValue, mirrorMotorValue, remarks, userRemarks, isEngineFieldType, watchedEngineRepaired, watchedEngineLongCranking, watchedEngineElectricalWiring, watchedEngineSoundBlowBy, watchedEngineSound, watchedEngineMountingVibration, watchedEngineMountingAbnormal, watchedClutchHard, watchedGearShiftingNoise, watchedGearShiftingHard, watchedGearShiftingAxle, watchedEngineOilLeaking, watchedEngineOilLevelDipstickLeak, watchedBatteryDamaged, watchedBatteryLowCharge, watchedBatteryCorroded, watchedCoolantLowLevel, watchedCoolantContaminated, watchedCoolantLeaking, watchedSumpDamaged, watchedSumpLeaking, label]);
+    }, [selectedOptions, orvmType, electricalType, fieldType, damageValue, name, foldingMirrorValue, mirrorMotorValue, userRemarks, isEngineFieldType, watchedEngineRepaired, watchedEngineLongCranking, watchedEngineElectricalWiring, watchedEngineSoundBlowBy, watchedEngineSound, watchedEngineMountingVibration, watchedEngineMountingAbnormal, watchedClutchHard, watchedGearShiftingNoise, watchedGearShiftingHard, watchedGearShiftingAxle, watchedEngineOilLeaking, watchedEngineOilLevelDipstickLeak, watchedBatteryDamaged, watchedBatteryLowCharge, watchedBatteryCorroded, watchedCoolantLowLevel, watchedCoolantContaminated, watchedCoolantLeaking, watchedSumpDamaged, watchedSumpLeaking, label]);
 
     const handleImageUpload = (url: string) => {
         setImageUrl(url);
@@ -1028,14 +1179,27 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
                                             const newValue = e.target.value;
                                             
                                             if (autoRemarks && newValue.startsWith(autoRemarks)) {
-                                                const userPart = newValue.substring(autoRemarks.length).trim();
-                                                if (userPart.startsWith(",")) {
-                                                    setUserRemarks(userPart.substring(1).trim());
-                                                } else {
+                                                const prefix = `${autoRemarks}. `;
+                                                if (newValue.startsWith(prefix)) {
+                                                    const userPart = newValue.substring(prefix.length);
                                                     setUserRemarks(userPart);
+                                                    syncOptionsFromRemarks(newValue);
+                                                } else if (newValue.startsWith(autoRemarks)) {
+                                                    const remaining = newValue.substring(autoRemarks.length);
+                                                    if (remaining.startsWith(". ")) {
+                                                        setUserRemarks(remaining.substring(2));
+                                                        syncOptionsFromRemarks(newValue);
+                                                    } else if (remaining.startsWith(".")) {
+                                                        setUserRemarks(remaining.substring(1));
+                                                        syncOptionsFromRemarks(newValue);
+                                                    } else {
+                                                        setUserRemarks(remaining);
+                                                        syncOptionsFromRemarks(newValue);
+                                                    }
                                                 }
-                                            } else if (!autoRemarks || !newValue.startsWith(autoRemarks)) {
+                                            } else if (!autoRemarks) {
                                                 setUserRemarks(newValue);
+                                                syncOptionsFromRemarks(newValue);
                                             }
                                             
                                             field.onChange(e);

@@ -38,20 +38,20 @@ export enum OwnerType {
 
 // Used Car Listing Status Enum
 export enum UsedCarListingStatus {
-    PENDING = 100,
-    INSPECTOR_ASSIGNED = 200,
-    INSPECTION_STARTED = 300,
-    INSPECTION_COMPLETED = 400,
-    DETAILS_UPDATED_BY_STAFF = 500,
-    APPROVED_BY_MANAGER = 600,
-    APPROVED_BY_ADMIN = 700,
-    LISTED = 800,
-    SOLD = 900,
-    REJECTED_BY_MANAGER = 1000,
-    REJECTED_BY_ADMIN = 1100,
-    REJECTED_BY_CUSTOMER = 1200,
-    EXPIRED = 1300,
-    CANCELLED = 1400,
+    PENDING = 100, // Pending Inspection
+    INSPECTOR_ASSIGNED = 200, // Manager Assigned Inspector
+    INSPECTION_STARTED = 300, // Inspector Started Inspection
+    INSPECTION_COMPLETED = 400, // Inspector Completed Inspection
+    DETAILS_UPDATED_BY_STAFF = 500, // Staff Updated Details
+    APPROVED_BY_MANAGER = 600, // Manager Approved
+    APPROVED_BY_ADMIN = 700, // Admin Approved
+    LISTED = 800, // Listed on the website
+    SOLD = 900, // Sold
+    REJECTED_BY_MANAGER = 1000, // Manager Rejected
+    REJECTED_BY_ADMIN = 1100, // Admin Rejected
+    REJECTED_BY_CUSTOMER = 1200, // Customer Rejected
+    EXPIRED = 1300, // Expired
+    CANCELLED = 1400, // Cancelled
 }
 
 // Inspection Image Types
