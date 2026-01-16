@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import CarCard from '@/components/car/CarCard';
@@ -8,7 +8,7 @@ import { Button } from '@/components/Button/Button';
 import SelectInput from '@/components/FormComponent/SelectInput';
 import { OwnerType, UsedCarListingStatus, ExteriorFields, EngineAndTransmissionFields, SteeringSuspensionAndBrakesFields, AirConditioningFields, ElectricalFields, InteriorFields, SeatsFields } from '@/lib/data';
 import { CarData } from '@/lib/CarData';
-import { FileText, Filter, MapPin, UserRound } from 'lucide-react';
+import { FileText, Filter, MapPin, UserRound, Clock, CheckCircle2, BadgeCheck, XCircle } from 'lucide-react';
 import { getAllUsedCars, getInspectionCentersData, getUsedCarDetails } from '@/utils/axios/auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/common';
@@ -58,7 +58,7 @@ const statusFilters = [
     { key: UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF, label: 'Details Updated by Staff' },
     { key: UsedCarListingStatus.APPROVED_BY_MANAGER, label: 'Approved (Manager)' },
     { key: UsedCarListingStatus.APPROVED_BY_ADMIN, label: 'Approved (Admin)' },
-    { key: UsedCarListingStatus.REJECTED_BY_MANAGER, label: 'Rejected (Manager)' },
+    { key: UsedCarListingStatus.LISTED, label: 'Listed' },
     { key: UsedCarListingStatus.REJECTED_BY_ADMIN, label: 'Rejected (Admin)' },
 ];
 
@@ -78,12 +78,37 @@ const statusLabel = (status: UsedCarListingStatus) => {
             return 'Approved by Manager';
         case UsedCarListingStatus.APPROVED_BY_ADMIN:
             return 'Approved by Admin';
-        case UsedCarListingStatus.REJECTED_BY_MANAGER:
-            return 'Rejected by Manager';
+        case UsedCarListingStatus.LISTED:
+            return 'Listed';
         case UsedCarListingStatus.REJECTED_BY_ADMIN:
             return 'Rejected by Admin';
         default:
             return 'Status';
+    }
+};
+
+const getStatusBadgeColor = (status: UsedCarListingStatus): { bgColor: string; icon: React.ReactNode } => {
+    switch (status) {
+        case UsedCarListingStatus.PENDING:
+            return { bgColor: 'bg-gray-500', icon: <Clock className="h-3 w-3" /> };
+        case UsedCarListingStatus.INSPECTOR_ASSIGNED:
+            return { bgColor: 'bg-blue-500', icon: <UserRound className="h-3 w-3" /> };
+        case UsedCarListingStatus.INSPECTION_STARTED:
+            return { bgColor: 'bg-yellow-500', icon: <Clock className="h-3 w-3" /> };
+        case UsedCarListingStatus.INSPECTION_COMPLETED:
+            return { bgColor: 'bg-emerald-500', icon: <CheckCircle2 className="h-3 w-3" /> };
+        case UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF:
+            return { bgColor: 'bg-purple-500', icon: <FileText className="h-3 w-3" /> };
+        case UsedCarListingStatus.APPROVED_BY_MANAGER:
+            return { bgColor: 'bg-indigo-500', icon: <BadgeCheck className="h-3 w-3" /> };
+        case UsedCarListingStatus.APPROVED_BY_ADMIN:
+            return { bgColor: 'bg-primary-500', icon: <CheckCircle2 className="h-3 w-3" /> };
+        case UsedCarListingStatus.LISTED:
+            return { bgColor: 'bg-green-500', icon: <CheckCircle2 className="h-3 w-3" /> };
+        case UsedCarListingStatus.REJECTED_BY_ADMIN:
+            return { bgColor: 'bg-red-500', icon: <XCircle className="h-3 w-3" /> };
+        default:
+            return { bgColor: 'bg-gray-500', icon: <Clock className="h-3 w-3" /> };
     }
 };
 
@@ -102,6 +127,8 @@ const reportButtonLabels: Partial<Record<UsedCarListingStatus, string>> = {
     [UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF]: 'Staff Inspection Report',
     [UsedCarListingStatus.APPROVED_BY_MANAGER]: 'Approved by Manager Inspection Report',
     [UsedCarListingStatus.APPROVED_BY_ADMIN]: 'All Inspection Report',
+    [UsedCarListingStatus.LISTED]: 'View Car Details',
+    [UsedCarListingStatus.REJECTED_BY_ADMIN]: 'Rejected by Admin Inspection Report',
 };
 
 type FilterFormData = {
@@ -579,6 +606,8 @@ const CarComponent = () => {
                             showFavorite={false}
                             showStatusBadge
                             statusBadgeText={statusLabel(car.status)}
+                            statusBadgeColor={getStatusBadgeColor(car.status).bgColor}
+                            statusBadgeIcon={getStatusBadgeColor(car.status).icon}
                         />
                         {reportButtonLabels[car.status] && (
                             <div className='p-3'>
@@ -706,7 +735,9 @@ const CarComponent = () => {
 
                         // Status 600 or 700: APPROVED_BY_MANAGER or APPROVED_BY_ADMIN -> Show ViewAllInspectionReport
                         if (selectedCarStatus === UsedCarListingStatus.APPROVED_BY_MANAGER || 
-                            selectedCarStatus === UsedCarListingStatus.APPROVED_BY_ADMIN) {
+                            selectedCarStatus === UsedCarListingStatus.APPROVED_BY_ADMIN ||
+                            selectedCarStatus === UsedCarListingStatus.REJECTED_BY_ADMIN ||
+                            selectedCarStatus === UsedCarListingStatus.LISTED) {
                             if (isLoadingCarDetails) {
                                 return (
                                     <div className="flex items-center justify-center py-12">

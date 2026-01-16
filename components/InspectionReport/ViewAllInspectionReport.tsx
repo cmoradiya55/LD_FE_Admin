@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/common';
 import { Button } from '@/components/Button/Button';
-import { IndianRupee, Save } from 'lucide-react';
+import { IndianRupee, Save, XCircle } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 interface InspectionReportDialogProps {
@@ -21,11 +21,13 @@ interface InspectionReportDialogProps {
 const InspectionReportDialog = ({ isOpen, onClose, carId, carDetailsData }: InspectionReportDialogProps) => {
     const [price, setPrice] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showRejectReason, setShowRejectReason] = useState(false);
+    const [rejectReason, setRejectReason] = useState<string>('');
     const { authState } = useAuth();
     const isAdmin = authState.user?.roleId === 1;
 
     // Only fetch inspection report for manager, not for admin
-    const { data: inspectionData, isLoading, refetch } = useQuery({
+    const { data: inspectionData, isLoading, refetch: refetchInspectionReport } = useQuery({
         queryKey: ['GET_INSPECTION_REPORT', carId],
         queryFn: async () => {
             if (!carId) return null;
@@ -168,7 +170,7 @@ const InspectionReportDialog = ({ isOpen, onClose, carId, carDetailsData }: Insp
                 if (response?.code === 200 || response?.code === 201) {
                     toast.success('Price saved and inspection report approved successfully');
                     onClose();
-                    refetch();
+                    refetchInspectionReport();
                 } else {
                     const errorMessage = response?.message || 'Failed to save price and approve inspection report';
                     toast.error(errorMessage);
@@ -180,6 +182,45 @@ const InspectionReportDialog = ({ isOpen, onClose, carId, carDetailsData }: Insp
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleRejectClick = () => {
+        setShowRejectReason(true);
+    };
+
+    const handleConfirmReject = async () => {
+        if (!rejectReason.trim() || !carId) {
+            toast.error('Please provide a reason for rejection');
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const payload = {
+                status: 2,
+                reason: rejectReason.trim()
+            };
+            const response = await patchUpdateStatusOfCar(carId, payload);
+            if (response?.code === 200 || response?.code === 201) {
+                toast.success('Car rejected successfully');
+                setShowRejectReason(false);
+                setRejectReason('');
+                onClose();
+                refetchInspectionReport();
+            } else {
+                const errorMessage = response?.message || 'Failed to reject car';
+                toast.error(errorMessage);
+            }
+        } catch (error: any) {
+            console.error('Error rejecting car:', error);
+            toast.error(error?.message || 'An error occurred while rejecting the car');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCancelReject = () => {
+        setShowRejectReason(false);
+        setRejectReason('');
     };
 
     return (
@@ -356,23 +397,69 @@ const InspectionReportDialog = ({ isOpen, onClose, carId, carDetailsData }: Insp
                                                                 </p>
                                                             )}
                                                         </div>
-                                                        <div className="flex justify-end">
-                                                            <Button
-                                                                onClick={handleSubmitPrice}
-                                                                disabled={!price || parseFloat(price) <= 0 || isSubmitting}
-                                                                variant="primary"
-                                                                className="flex items-center gap-2 px-6 py-2.5"
-                                                            >
-                                                                <Save className="h-4 w-4" />
-                                                                {isSubmitting ? 'Updating...' : 'Update Price'}
-                                                            </Button>
-                                                        </div>
+                                                        {!showRejectReason ? (
+                                                            <div className="flex justify-end gap-3">
+                                                                <Button
+                                                                    onClick={handleSubmitPrice}
+                                                                    disabled={!price || parseFloat(price) <= 0 || isSubmitting}
+                                                                    variant="accept"
+                                                                    className="flex items-center gap-2 px-6 py-2.5"
+                                                                >
+                                                                    <Save className="h-4 w-4" />
+                                                                    {isSubmitting ? 'Updating...' : 'Update Price'}
+                                                                </Button>
+                                                                <Button
+                                                                    onClick={handleRejectClick}
+                                                                    disabled={isSubmitting}
+                                                                    variant="destructive"
+                                                                    className="flex items-center gap-2 px-6 py-2.5"
+                                                                >
+                                                                    <XCircle className="h-4 w-4" />
+                                                                    Reject
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-4">
+                                                                <div>
+                                                                    <label htmlFor="rejectReason" className="block text-sm font-semibold text-gray-700 mb-2">
+                                                                        Rejection Reason <span className="text-red-500">*</span>
+                                                                    </label>
+                                                                    <textarea
+                                                                        id="rejectReason"
+                                                                        value={rejectReason}
+                                                                        onChange={(e) => setRejectReason(e.target.value)}
+                                                                        placeholder="Please provide a reason for rejecting this car..."
+                                                                        rows={4}
+                                                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-slate-50/50 focus:bg-white focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all duration-200 outline-none text-gray-900 placeholder:text-gray-400 resize-none"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex justify-end gap-3">
+                                                                    <Button
+                                                                        onClick={handleCancelReject}
+                                                                        disabled={isSubmitting}
+                                                                        variant="outline"
+                                                                        className="flex items-center gap-2 px-6 py-2.5"
+                                                                    >
+                                                                        Cancel
+                                                                    </Button>
+                                                                    <Button
+                                                                        onClick={handleConfirmReject}
+                                                                        disabled={!rejectReason.trim() || isSubmitting}
+                                                                        variant="destructive"
+                                                                        className="flex items-center gap-2 px-6 py-2.5"
+                                                                    >
+                                                                        <XCircle className="h-4 w-4" />
+                                                                        {isSubmitting ? 'Rejecting...' : 'Confirm Reject'}
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
                                             }
 
-                                            // Admin: status 700 - Show price from detail API (read-only)
-                                            if (currentStatus === UsedCarListingStatus.APPROVED_BY_ADMIN) {
+                                            // Admin: status 700/800 - Show price from detail API (read-only)
+                                            if (currentStatus === UsedCarListingStatus.APPROVED_BY_ADMIN || currentStatus === UsedCarListingStatus.LISTED) {
                                                 const finalPrice = carDetailsData?.finalPrice;
                                                 return (
                                                     <div>
@@ -383,7 +470,23 @@ const InspectionReportDialog = ({ isOpen, onClose, carId, carDetailsData }: Insp
                                                             <p className="text-2xl font-bold text-primary-700">
                                                                 ₹{finalPrice != null && finalPrice !== undefined
                                                                     ? finalPrice.toLocaleString('en-IN')
-                                                                    : 'N/A'}
+                                                                    : 'N/A'} /-
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Admin: status 1100 - Show rejection reason
+                                            if (currentStatus === UsedCarListingStatus.REJECTED_BY_ADMIN) {
+                                                return (
+                                                    <div>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                            Rejection Reason
+                                                        </label>
+                                                        <div className="p-4 rounded-lg bg-primary-50 border-2 border-primary-200">
+                                                            <p className="text-2xl font-bold text-primary-700">
+                                                                {carDetailsData?.adminCancelReason || 'N/A'}
                                                             </p>
                                                         </div>
                                                     </div>
