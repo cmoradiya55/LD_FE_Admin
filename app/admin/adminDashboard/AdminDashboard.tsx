@@ -239,17 +239,17 @@ const AdminDashboard = () => {
 
       {/* Page Header */}
       <PageHeader
-        title="Dashboard"
+        title="Dashboard Mobile"
         actions={
           <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5">
             <TrendingUp className="mr-2 w-4 h-4" />
-            Generate Report
+            Generate Report Mobile
           </Button>
         }
       />
 
       {/* Cars Overview */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-5">
         {carsOverviewStats.map((card) => (
           <OverviewStatCard
             key={card.label}
@@ -261,8 +261,8 @@ const AdminDashboard = () => {
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Vendors Overview */}
         <section className="space-y-2 flex-1">
-          <h3 className="text-base font-semibold text-slate-800 sm:text-lg">Vendors overview</h3>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+          <h3 className="text-base font-semibold text-slate-800 sm:text-lg">Vendors overview Mobile</h3>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
             {vendorOverviewStats.map((card) => (
               <OverviewSummaryCard key={card.title} {...card} />
             ))}
@@ -271,8 +271,8 @@ const AdminDashboard = () => {
 
         {/* Drivers Overview */}
         <section className="space-y-2 flex-1">
-          <h3 className="text-base font-semibold text-slate-800 sm:text-lg">Drivers overview</h3>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+          <h3 className="text-base font-semibold text-slate-800 sm:text-lg">Drivers overview Mobile</h3>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
             {driverOverviewStats.map((card) => (
               <OverviewSummaryCard key={card.title} {...card} />
             ))}

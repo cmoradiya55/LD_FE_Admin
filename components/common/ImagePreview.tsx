@@ -2,6 +2,7 @@
 
 import { Minus, Plus, RotateCcw, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type ImagePreviewProps = {
   src: string;
@@ -14,7 +15,12 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const minZoom = 1;
   const maxZoom = 3;
@@ -39,8 +45,8 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
   }, [isOpen]);
 
   const clampZoom = useCallback((value: number) => {
-    return Math.min(maxZoom, Math.max(minZoom, Number(value.toFixed(2))));
-  }, []);
+    return Math.min(maxZoom, Math.max(minZoom, parseFloat(value.toFixed(2))));
+  }, [maxZoom, minZoom]);
 
   const adjustZoom = useCallback((delta: number) => {
     setZoom((prev) => {
@@ -94,7 +100,7 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
     return {
       transform: `scale(${zoom}) translate(${offset.x / zoom}px, ${offset.y / zoom}px)`,
       cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
-      transition: isDragging ? 'none' : 'transform 150ms ease',
+      transition: isDragging ? 'none' : 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)',
     };
   }, [zoom, offset, isDragging]);
 
@@ -103,94 +109,113 @@ export default function ImagePreview({ src, alt, className }: ImagePreviewProps)
     setOffset({ x: 0, y: 0 });
   }, []);
 
+  const modalContent = isOpen && mounted ? (
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center"
+      style={{ 
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        backdropFilter: 'blur(8px)',
+      }}
+      onClick={() => setIsOpen(false)}
+      aria-modal="true"
+      role="dialog"
+    >
+          {/* Close Button - Top Right */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setIsOpen(false);
+            }}
+            className="absolute top-4 right-4 z-[100] flex items-center justify-center h-10 w-10 rounded-full bg-gray-900/90 backdrop-blur-md text-white hover:bg-gray-800 transition-all duration-200 hover:scale-110 border border-gray-700/50 shadow-lg pointer-events-auto"
+            aria-label="Close preview"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          {/* Image Container */}
+          <div
+            className="relative w-full h-full flex items-center justify-center p-4 sm:p-8"
+            onClick={(e) => e.stopPropagation()}
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={stopDragging}
+            onMouseLeave={stopDragging}
+          >
+            <img
+              src={src}
+              alt={alt}
+              draggable={false}
+              className="select-none"
+              style={{
+                ...imageTransform,
+                maxWidth: 'calc(100vw - 2rem)',
+                maxHeight: 'calc(100vh - 8rem)',
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+              }}
+            />
+          </div>
+
+          {/* Floating Controls - Bottom Center */}
+          <div 
+            className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-900/90 backdrop-blur-md border border-gray-700/50 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="flex items-center justify-center h-9 w-9 rounded-full bg-gray-800/80 hover:bg-gray-700 text-white transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+              onClick={() => adjustZoom(-zoomStep)}
+              disabled={zoom <= minZoom}
+              aria-label="Zoom out"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            
+            <div className="flex items-center gap-2 px-3">
+              <span className="text-sm font-medium text-white min-w-[50px] text-center">
+                {(zoom * 100).toFixed(0)}%
+              </span>
+            </div>
+            
+            <button
+              type="button"
+              className="flex items-center justify-center h-9 w-9 rounded-full bg-gray-800/80 hover:bg-gray-700 text-white transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+              onClick={() => adjustZoom(zoomStep)}
+              disabled={zoom >= maxZoom}
+              aria-label="Zoom in"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            
+            <div className="w-px h-6 bg-gray-600/50 mx-1" />
+            
+            <button
+              type="button"
+              className="flex items-center justify-center h-9 w-9 rounded-full bg-gray-800/80 hover:bg-gray-700 text-white transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+              onClick={resetZoom}
+              disabled={zoom === 1}
+              aria-label="Reset zoom"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+  ) : null;
+
   return (
     <>
       <img
         src={src}
         alt={alt}
-        className={(className ?? '') + ' cursor-zoom-in'}
+        className={(className ?? '') + ' cursor-zoom-in transition-transform duration-200 hover:scale-[1.02]'}
         onClick={() => setIsOpen(true)}
         style={{ objectFit: "cover" }}
       />
-
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.65)' }}
-          onClick={() => setIsOpen(false)}
-          aria-modal="true"
-          role="dialog"
-        >
-          <div
-            className="relative max-w-[90vw] max-h-[90vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="absolute -top-6 -right-6 flex items-center justify-center h-6 w-6 rounded-full border shadow-lg bg-white/95 text-gray-900 hover:bg-white hover:text-black transition-colors"
-              aria-label="Close preview"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <div
-              className="overflow-hidden rounded-lg bg-black/80 flex items-center justify-center max-w-[90vw] max-h-[80vh]"
-              onWheel={handleWheel}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={stopDragging}
-              onMouseLeave={stopDragging}
-            >
-              <img
-                src={src}
-                alt={alt}
-                draggable={false}
-                className="select-none"
-                style={{
-                  maxWidth: '90vw',
-                  maxHeight: '80vh',
-                  objectFit: 'contain',
-                  ...imageTransform,
-                }}
-              />
-            </div>
-            <div className="mt-3 flex items-center justify-center gap-2">
-              <button
-                type="button"
-                className="flex items-center gap-1 rounded-full border px-3 py-2 text-sm font-medium bg-white border-gray-300"
-                onClick={() => adjustZoom(-zoomStep)}
-                disabled={zoom <= minZoom}
-                style={{ opacity: zoom <= minZoom ? 0.5 : 1 }}
-              >
-                <Minus className="w-4 h-4" /> Zoom out
-              </button>
-              <span className="text-xs text-gray-300 min-w-[60px] text-center">
-                {(zoom * 100).toFixed(0)}%
-              </span>
-              <button
-                type="button"
-                className="flex items-center gap-1 rounded-full border px-3 py-2 text-sm font-medium bg-white border-gray-300"
-                onClick={() => adjustZoom(zoomStep)}
-                disabled={zoom >= maxZoom}
-                style={{ opacity: zoom >= maxZoom ? 0.5 : 1 }}
-              >
-                <Plus className="w-4 h-4" /> Zoom in
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-1 rounded-full border px-3 py-2 text-sm font-medium bg-white border-gray-300"
-                onClick={resetZoom}
-                disabled={zoom === 1}
-                style={{ opacity: zoom === 1 ? 0.5 : 1 }}
-              >
-                <RotateCcw className="w-4 h-4" /> Reset
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {mounted && createPortal(modalContent, document.body)}
     </>
   );
 }
-
-

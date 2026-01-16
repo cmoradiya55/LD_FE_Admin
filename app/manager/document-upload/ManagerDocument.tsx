@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import TextInput from "@/components/FormComponent/TextInput";
-import UploadBox from "@/components/common/UploadBox";
-import { getDocumentStatus, setDocumentStatus as saveDocumentStatus } from "@/lib/storage";
+import UploadBox from "@/components/common/UploadImageBox";
 import { submitDocumentDetails } from "@/utils/axios/auth";
 import { toast } from "sonner";
 
@@ -18,19 +17,20 @@ const statusConfig: any = {
 
 const ManagerDocument = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [documentStatus, setDocumentStatus] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [remarks, setRemarks] = useState<string>("");
+  
   const { control, watch, setValue, formState: { errors } } = useForm({
     defaultValues: { aadhaar: "", pan: "" }
   });
 
-  // State for uploaded file URLs
   const [uploadedFiles, setUploadedFiles] = useState({
     profilePhoto: "",
     aadhaarFront: "",
     aadhaarBack: "",
     panFront: "",
-    panBack: "",
   });
 
   const aadhaar = watch("aadhaar");
@@ -39,17 +39,53 @@ const ManagerDocument = () => {
   const isPanValid = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan?.toUpperCase() || "");
   const status = statusConfig[documentStatus];
 
-  // Single upload handler function
   const handleFileUpload = (fileUrl: string, field: keyof typeof uploadedFiles) => {
-    setUploadedFiles(prev => ({ ...prev, [field]: fileUrl }));
-    console.log(`${field} uploaded:`, fileUrl);
+    setUploadedFiles((prev) => ({ ...prev, [field]: fileUrl }));
   };
 
   useEffect(() => {
-    const storedStatus = getDocumentStatus();
-    if (storedStatus !== null) setDocumentStatus(storedStatus);
-    if (storedStatus === 3) router.push("/manager/managerDashboard");
-  }, [router]);
+    const statusParam = searchParams.get("status");
+    if (statusParam) {
+      const status = parseInt(statusParam, 10);
+      setDocumentStatus(status);
+      if (status === 3) {
+        router.push("/manager/managerDashboard");
+      }
+    }
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    if (documentStatus !== 4) return;
+    
+    try {
+      const authData = localStorage.getItem("adminpro-auth");
+      if (!authData) return;
+      
+      const { user } = JSON.parse(authData);
+      if (!user) return;
+      
+      if (user.aadharNumber) {
+        setValue("aadhaar", user.aadharNumber);
+      }
+      if (user.panNumber) {
+        setValue("pan", user.panNumber);
+      }
+      
+      setUploadedFiles({
+        profilePhoto: user.selfieImage || "",
+        aadhaarFront: user.aadharFrontImage || "",
+        aadhaarBack: user.aadharBackImage || "",
+        panFront: user.panImage || "",
+      });
+      
+      if (user.remarks || user.rejectionRemarks) {
+        setRemarks(user.remarks || user.rejectionRemarks);
+      }
+    } catch (error) {
+      console.error("Error loading user document data:", error);
+    }
+  }, [documentStatus, setValue]);
+
 
   const Header = () => (
     <div className="z-10 bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-5 shadow">
@@ -93,6 +129,8 @@ const ManagerDocument = () => {
     );
   }
 
+  if (documentStatus !== 1 && documentStatus !== 4) return null;
+
   const handleUpload = async () => {
     if (!isAadhaarValid || !isPanValid) {
       toast.error("Please fill all required fields correctly");
@@ -116,13 +154,12 @@ const ManagerDocument = () => {
         panCardImage: uploadedFiles.panFront,
       };
 
-      console.log("Submitting document details:", payload);
       const response = await submitDocumentDetails(payload);
 
       if (response && (response.success || response.code === 200)) {
         toast.success("Documents submitted successfully!");
         setDocumentStatus(2);
-        saveDocumentStatus(2);
+        router.push("/manager/document-upload?status=2");
       } else {
         throw new Error(response?.message || "Failed to submit documents");
       }
@@ -140,12 +177,31 @@ const ManagerDocument = () => {
       <Header />
 
       <div className="max-w-4xl mx-auto px-4 pb-10 space-y-6">
+        {/* Rejection Remarks - Show only when status is 4 */}
+        {documentStatus === 4 && remarks && (
+          <div className="bg-red-50 border-l-4 border-red-500 rounded-2xl p-5 shadow mt-6">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-800 mb-2">Documents Rejected</h3>
+                <p className="text-sm text-red-700 leading-relaxed">{remarks}</p>
+                <p className="text-xs text-red-600 mt-2">Please review the feedback above and resubmit your documents with the necessary corrections.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Profile */}
         <div className="bg-white rounded-2xl p-5 shadow mt-6">
           <h2 className="font-semibold text-gray-800 mb-4">Profile Photo</h2>
           <UploadBox 
             label="Upload Profile Picture" 
             onUploadComplete={(url) => handleFileUpload(url, "profilePhoto")}
+            existingImage={uploadedFiles.profilePhoto}
           />
         </div>
 
@@ -158,7 +214,7 @@ const ManagerDocument = () => {
             label="Aadhaar Number"
             placeholder="Enter Aadhaar Number"
             required
-            error={errors.aadhaar}
+            error={errors.aadhaar as any}
             inputClassName="px-3 py-2 text-sm"
             type="text"
             rules={{
@@ -170,11 +226,13 @@ const ManagerDocument = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <UploadBox 
               onUploadComplete={(url) => handleFileUpload(url, "aadhaarFront")} 
-              label="Front Side" 
+              label="Front Side"
+              existingImage={uploadedFiles.aadhaarFront}
             />
             <UploadBox 
               onUploadComplete={(url) => handleFileUpload(url, "aadhaarBack")} 
-              label="Back Side" 
+              label="Back Side"
+              existingImage={uploadedFiles.aadhaarBack}
             />
           </div>
         </div>
@@ -188,7 +246,7 @@ const ManagerDocument = () => {
             label="PAN Number"
             placeholder="Enter PAN Number (e.g., ABCDE1234F)"
             required
-            error={errors.pan}
+            error={errors.pan as any}
             inputClassName="px-3 py-2 text-sm uppercase"
             type="text"
             rules={{
@@ -216,16 +274,11 @@ const ManagerDocument = () => {
               PAN must be in format: ABCDE1234F (5 uppercase letters, 4 digits, 1 uppercase letter)
             </p>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <UploadBox 
-              onUploadComplete={(url) => handleFileUpload(url, "panFront")} 
-              label="Front Side" 
-            />
-            <UploadBox 
-              onUploadComplete={(url) => handleFileUpload(url, "panBack")} 
-              label="Back Side" 
-            />
-          </div>
+          <UploadBox 
+            onUploadComplete={(url) => handleFileUpload(url, "panFront")} 
+            label="PAN Card Photo"
+            existingImage={uploadedFiles.panFront}
+          />
         </div>
 
         {/* Save Button */}

@@ -42,21 +42,21 @@ const DateInput: React.FC<DateInputProps> = ({
   icon,
   disabled = false,
   hideLabel = false,
-  inputClassName = 'px-4 py-3',
+  inputClassName = 'px-3 py-2',
   rules,
   min,
   max,
 }) => {
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-1.5 ${className}`}>
       {!hideLabel && (
         <label 
           htmlFor={name} 
-          className={`block text-sm font-semibold flex items-center gap-2 ${
+          className={`block text-xs font-semibold flex items-center gap-1.5 ${
             disabled ? 'text-gray-500' : 'text-blue-700'
           }`}
         >
-          {icon || <Calendar className="w-4 h-4" />}
+          {icon || <Calendar className="w-3.5 h-3.5" />}
           {label}
           {required && <span className="text-red-500">*</span>}
         </label>
@@ -78,7 +78,7 @@ const DateInput: React.FC<DateInputProps> = ({
               disabled={disabled}
               min={min}
               max={max}
-              className={`w-full border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 placeholder:text-gray-500 text-gray-900 ${
+              className={`w-full border rounded-md transition-all duration-200 focus:outline-none focus:ring-2 placeholder:text-gray-500 text-sm text-gray-900 ${
                 disabled 
                   ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed' 
                   : error 
@@ -90,8 +90,8 @@ const DateInput: React.FC<DateInputProps> = ({
         />
       </div>
       {error && (
-        <p className="text-red-500 text-sm flex items-center gap-2 mt-1">
-          <AlertCircle className="w-4 h-4" />
+        <p className="text-red-500 text-xs flex items-center gap-1 mt-0.5">
+          <AlertCircle className="w-3 h-3" />
           {error.message}
         </p>
       )}

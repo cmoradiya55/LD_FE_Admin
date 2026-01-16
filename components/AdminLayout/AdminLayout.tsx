@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { LoadingSpinner } from "../common";
 import { Button } from '@/components/Button/Button';
 import Sidebar from '@/components/Sidebar/Sidebar';
+import BottomBar from '@/components/BottomBar/BottomBar';
 import Header from '@/components/Header/Header';
 
 
@@ -22,17 +23,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Check screen size for mobile-only roles (Manager and Inspector)
   useEffect(() => {
     const checkScreenSize = () => {
-      // Large screen breakpoint: 1024px (lg in Tailwind)
       setIsLargeScreen(window.innerWidth >= 1024);
     };
 
-    // Check on mount
     checkScreenSize();
 
-    // Listen for resize events
     window.addEventListener('resize', checkScreenSize);
 
     return () => {
@@ -40,7 +37,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     };
   }, []);
 
-  // Check authentication and role-based route access
   useEffect(() => {
     if (!authState.isLoading && !authState.isAuthenticated) {
       toast.error('Session expired. Please log in again.');
@@ -48,19 +44,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       return;
     }
 
-    // Wait for roleId to be available before checking route access
     if (!authState.isLoading && authState.isAuthenticated && authState.user?.roleId) {
       const roleId = authState.user.roleId;
       
-      // Check if user is trying to access a route for a different role
-      // roleId 1 = Admin, roleId 2 = Manager, roleId 3 = Inspector
       if (pathname.startsWith('/admin/') && roleId !== 1) {
         toast.error('You are not allowed to access the admin area.');
-        // Redirect to correct dashboard based on role
         if (roleId === 2) {
           router.push('/manager/managerDashboard');
         } else if (roleId === 3) {
           router.push('/inspector/inspectorDashboard');
+        }
+        else if (roleId === 4) {
+          router.push('/staff/staffDashboard');
         }
       } else if (pathname.startsWith('/manager/') && roleId !== 2) {
         toast.error('You are not allowed to access the manager area.');
@@ -68,6 +63,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           router.push('/admin/adminDashboard');
         } else if (roleId === 3) {
           router.push('/inspector/inspectorDashboard');
+        } else if (roleId === 4) {
+          router.push('/staff/staffDashboard');
         }
       } else if (pathname.startsWith('/inspector/') && roleId !== 3) {
         toast.error('You are not allowed to access the inspector area.');
@@ -75,6 +72,23 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           router.push('/admin/adminDashboard');
         } else if (roleId === 2) {
           router.push('/manager/managerDashboard');
+        } else if (roleId === 4) {
+          router.push('/staff/staffDashboard');
+        } else if (roleId === 2) {
+          router.push('/manager/managerDashboard');
+        } else if (roleId === 1) {
+          router.push('/admin/adminDashboard');
+        }
+      } else if (pathname.startsWith('/staff/') && roleId !== 4) {
+        toast.error('You are not allowed to access the staff area.');
+        if (roleId === 1) {
+          router.push('/admin/adminDashboard');
+        } else if (roleId === 2) {
+          router.push('/manager/managerDashboard');
+        } else if (roleId === 3) {
+          router.push('/inspector/inspectorDashboard');
+        } else if (roleId === 1) {
+          router.push('/admin/adminDashboard');
         }
       }
     }
@@ -87,11 +101,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const handlePageChange = (page: string) => {
     const roleId = authState.user?.roleId;
     
-    // Role-specific route maps
     const adminRouteMap: { [key: string]: string } = {
       'adminDashboard': '/admin/adminDashboard',
       'users': '/admin/users',
-      'staff': '/admin/staff',
+      'staff': '/admin/adminStaff',
       'inspectionCenter': '/admin/inspectionCenter',
       'car': '/admin/car',
       'products': '/admin/products',
@@ -101,18 +114,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
     const managerRouteMap: { [key: string]: string } = {
       'managerDashboard': '/manager/managerDashboard',
-      'staff': '/manager/staff',
-      'inspectionCenter': '/manager/inspectionCenter',
-      'car': '/manager/car',
+      'inspectorList': '/manager/inspectorList',
+      'car': '/manager/carList',
+      'carList': '/manager/carList',
       'profile': '/manager/profile',
       'notifications': '/manager/notifications',
     };
 
     const inspectorRouteMap: { [key: string]: string } = {
       'inspectorDashboard': '/inspector/inspectorDashboard',
-      'car': '/inspector/car',
+      'car': '/inspector/carList',
+      'carList': '/inspector/carList',
       'profile': '/inspector/profile',
       'notifications': '/inspector/notifications',
+    };
+
+    const staffRouteMap: { [key: string]: string } = {
+      'staffDashboard': '/staff/staffDashboard',
+      'car': '/staff/carList',
+      'carList': '/staff/carList',
+      'profile': '/staff/profile',
+      'notifications': '/staff/notifications',
     };
 
     let routeMap: { [key: string]: string };
@@ -131,6 +153,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         routeMap = inspectorRouteMap;
         defaultRoute = '/inspector/inspectorDashboard';
         break;
+      case 4: // Staff
+        routeMap = staffRouteMap;
+        defaultRoute = '/staff/staffDashboard';
+        break;
       default:
         routeMap = adminRouteMap;
         defaultRoute = '/admin/adminDashboard';
@@ -140,31 +166,99 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     router.push(route);
   };
 
-  // Map current path to sidebar page for highlighting
   const getCurrentPage = () => {
     const roleId = authState.user?.roleId;
     
-    // Role-specific dashboard routes
-    if (pathname === '/admin/adminDashboard' || pathname === '/adminDashboard') return 'adminDashboard';
-    if (pathname === '/manager/managerDashboard' || pathname === '/managerDashboard') return 'managerDashboard';
-    if (pathname === '/inspector/inspectorDashboard' || pathname === '/inspectorDashboard') return 'inspectorDashboard';
+    let pagePath = pathname;
     
-    // Common routes
-    if (pathname === '/users') return 'users';
-    if (pathname === '/staff' || pathname.startsWith('/staff/')) return 'staff';
-    if (pathname === '/inspectionCenter') return 'inspectionCenter';
-    if (pathname.startsWith('/inspectionCenter/')) return 'inspectionCenter';
-    if (pathname.startsWith('/car/')) return 'car'; // For car detail pages (e.g., /car/[slug])
-    if (pathname === '/car') return 'car';
-    if (pathname === '/products') return 'products';
-    if (pathname.startsWith('/products/')) return 'products'; // For product detail pages
-    if (pathname === '/profile') return 'profile';
-    if (pathname === '/notifications') return 'notifications';
+    if (pathname.startsWith('/admin/')) {
+      pagePath = pathname.replace('/admin/', '');
+    } else if (pathname.startsWith('/manager/')) {
+      pagePath = pathname.replace('/manager/', '');
+    } else if (pathname.startsWith('/inspector/')) {
+      pagePath = pathname.replace('/inspector/', '');
+    } else if (pathname.startsWith('/staff/')) {
+      pagePath = pathname.replace('/staff/', '');
+    } else {
+      pagePath = pathname.replace(/^\//, '');
+    }
     
-    // Default based on role
-    if (roleId === 1) return 'adminDashboard';
-    if (roleId === 2) return 'managerDashboard';
-    if (roleId === 3) return 'inspectorDashboard';
+    // Handle dashboard routes
+    if (pagePath === 'adminDashboard') return 'adminDashboard';
+    if (pagePath === 'managerDashboard') return 'managerDashboard';
+    if (pagePath === 'inspectorDashboard') return 'inspectorDashboard';
+    if (pagePath === 'staffDashboard') return 'staffDashboard';
+    
+    const baseRoute = pagePath.split('/')[0];
+    
+    // Admin routes
+    const adminRouteMap: { [key: string]: string } = {
+      'car': 'car',
+      'inspectionCenter': 'inspectionCenter',
+      'adminStaff': 'staff',
+      'users': 'users',
+      'products': 'products',
+      'profile': 'profile',
+      'notifications': 'notifications',
+    };
+    
+    // Manager routes
+    const managerRouteMap: { [key: string]: string } = {
+      'inspectorList': 'inspectorList',
+      'carList': 'car',
+      'car': 'car',
+      'profile': 'profile',
+      'notifications': 'notifications',
+    };
+    
+    // Inspector routes
+    const inspectorRouteMap: { [key: string]: string } = {
+      'carList': 'car',
+      'car': 'car',
+      'profile': 'profile',
+      'notifications': 'notifications',
+    };
+    
+    // Staff routes
+    const staffRouteMap: { [key: string]: string } = {
+      'carList': 'car',
+      'car': 'car',
+      'staffInspection': 'car',
+      'profile': 'profile',
+      'notifications': 'notifications',
+    };
+    
+    // Return based on role
+    if (roleId === 1) {
+      // Admin
+      if (adminRouteMap[baseRoute]) {
+        return adminRouteMap[baseRoute];
+      }
+      return 'adminDashboard';
+    } else if (roleId === 2) {
+      // Manager
+      if (managerRouteMap[baseRoute]) {
+        return managerRouteMap[baseRoute];
+      }
+      return 'managerDashboard';
+    } else if (roleId === 3) {
+      // Inspector
+      if (inspectorRouteMap[baseRoute]) {
+        return inspectorRouteMap[baseRoute];
+      }
+      return 'inspectorDashboard';
+    } else if (roleId === 4) {
+      // Staff
+      if (staffRouteMap[baseRoute]) {
+        return staffRouteMap[baseRoute];
+      }
+      return 'staffDashboard';
+    }
+    
+    // Default fallback
+    if (adminRouteMap[baseRoute]) {
+      return adminRouteMap[baseRoute];
+    }
     
     return 'dashboard';
   };
@@ -183,6 +277,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       if (roleId === 1) dashboardRoute = '/admin/adminDashboard';
       if (roleId === 2) dashboardRoute = '/manager/managerDashboard';
       if (roleId === 3) dashboardRoute = '/inspector/inspectorDashboard';
+      if (roleId === 4) dashboardRoute = '/staff/staffDashboard';
       
       return {
         showBackButton: true,
@@ -195,7 +290,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     };
   };
 
-  // Show loading spinner while checking auth or waiting for roleId
   if (authState.isLoading || (authState.isAuthenticated && !authState.user?.roleId)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -219,14 +313,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setIsMobileMenuOpen(false);
   };
 
-  // Return null if not authenticated (will redirect in useEffect)
   if (!authState.isAuthenticated || !authState.user?.roleId) {
     return null;
   }
 
-  // Check if user is Manager or Inspector trying to access on large screen
   const roleId = authState.user?.roleId;
-  const isMobileOnlyRole = roleId === 2 || roleId === 3; // Manager or Inspector
+  const isMobileOnlyRole = roleId === 2 || roleId === 3; // Manager and Inspector are mobile-only, Staff (4) is full screen like Admin
   
   if (isMobileOnlyRole && isLargeScreen) {
     return (
@@ -279,16 +371,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar
-        currentPage={getCurrentPage()}
-        onPageChange={handlePageChange}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onLogout={handleLogout}
-        isMobileMenuOpen={isMobileMenuOpen}
-        onCloseMobileMenu={handleMobileMenuClose}
-        roleId={authState.user?.roleId}
-      />
+      {/* Sidebar - Only visible on desktop (lg and above) */}
+      <div className="hidden lg:block">
+        <Sidebar
+          currentPage={getCurrentPage()}
+          onPageChange={handlePageChange}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onLogout={handleLogout}
+          isMobileMenuOpen={false}
+          onCloseMobileMenu={handleMobileMenuClose}
+          roleId={authState.user?.roleId}
+        />
+      </div>
       
       <div className="flex-1 flex flex-col overflow-hidden h-full">
         <Header
@@ -304,6 +399,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               router.push('/managerNotifications');
             } else if (roleId === 3) {
               router.push('/inspectorNotifications');
+            } else if (roleId === 4) {
+              router.push('/staffNotifications');
             } else {
               router.push('/adminNotifications');
             }
@@ -313,12 +410,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {...getBackButtonProps()}
         />
         
-        <main className="flex-1 overflow-y-auto p-4 sm:p-2 md:p-3 lg:p-8 min-h-0 pb-6 sm:pb-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-2 md:p-3 lg:p-8 min-h-0 pb-20 lg:pb-6 sm:pb-8">
           <div className="animate-in fade-in-0 slide-in-from-right-4 duration-500">
             {children}
           </div>
         </main>
       </div>
+      
+      {/* BottomBar - Only visible on mobile (below lg) */}
+      <BottomBar
+        currentPage={getCurrentPage()}
+        onPageChange={handlePageChange}
+        roleId={authState.user?.roleId}
+      />
     </div>
   );
 }

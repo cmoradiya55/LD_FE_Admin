@@ -41,7 +41,7 @@ const SelectInput: React.FC<SelectInputProps> = ({
   icon,
   disabled = false,
   hideLabel = false,
-  inputClassName = 'px-4 py-3',
+  inputClassName = 'px-3 py-2',
   rules,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -64,11 +64,11 @@ const SelectInput: React.FC<SelectInputProps> = ({
   }, [isOpen]);
 
   return (
-    <div className={`space-y-2 ${className}`} ref={containerRef}>
+    <div className={`space-y-1.5 ${className}`} ref={containerRef}>
       {!hideLabel && (
         <label 
           htmlFor={name} 
-          className={`block text-sm font-semibold flex items-center gap-2 ${
+          className={`block text-xs font-semibold flex items-center gap-1.5 ${
             disabled ? 'text-gray-500' : 'text-blue-700'
           }`}
         >
@@ -101,13 +101,13 @@ const SelectInput: React.FC<SelectInputProps> = ({
                     if (isDisabled) return;
                     setIsOpen((prev) => !prev);
                   }}
-                  className={`w-full border rounded-lg bg-slate-50 text-sm transition-all duration-200 focus:outline-none focus:ring-2 text-left text-gray-900 cursor-pointer shadow-sm flex items-center justify-between ${
+                  className={`w-full border rounded-md bg-slate-50 text-sm transition-all duration-200 focus:outline-none focus:ring-2 text-left text-gray-900 cursor-pointer shadow-sm flex items-center justify-between ${
                     isDisabled
                       ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
                       : error
                         ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-100'
                         : 'border-gray-200 bg-slate-50 focus:border-primary focus:ring-primary/20 focus:bg-white'
-                  } ${inputClassName} pr-10`}
+                  } ${inputClassName} pr-8`}
                 >
                   <span
                     className={
@@ -116,9 +116,9 @@ const SelectInput: React.FC<SelectInputProps> = ({
                   >
                     {selectedOption ? selectedOption.label : placeholder}
                   </span>
-                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <span className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
                     <ChevronDown
-                      className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+                      className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
                         isOpen ? 'rotate-180' : ''
                       }`}
                     />
@@ -126,10 +126,10 @@ const SelectInput: React.FC<SelectInputProps> = ({
                 </button>
 
                 {isOpen && !isDisabled && (
-                  <div className="absolute z-50 mt-1.5 w-full rounded-xl border border-gray-100 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.12)] overflow-hidden">
-                    <div className="max-h-56 overflow-y-auto custom-scrollbar">
+                  <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-100 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.12)] overflow-hidden">
+                    <div className="max-h-48 overflow-y-auto custom-scrollbar">
                       {options.length === 0 && (
-                        <div className="px-4 py-3 text-xs text-gray-400">
+                        <div className="px-3 py-2 text-xs text-gray-400">
                           No options available
                         </div>
                       )}
@@ -145,7 +145,7 @@ const SelectInput: React.FC<SelectInputProps> = ({
                               field.onChange(option.value);
                               setIsOpen(false);
                             }}
-                            className={`w-full flex items-center justify-between px-3 sm:px-4 py-2.5 text-xs sm:text-sm transition-colors text-left ${
+                            className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors text-left ${
                               isSelected
                                 ? 'bg-blue-50 text-blue-700 font-semibold'
                                 : 'text-gray-700 hover:bg-primary/5'
@@ -167,8 +167,8 @@ const SelectInput: React.FC<SelectInputProps> = ({
         />
       </div>
       {error && (
-        <p className="text-red-500 text-sm flex items-center gap-2 mt-1">
-          <AlertCircle className="w-4 h-4" />
+        <p className="text-red-500 text-xs flex items-center gap-1 mt-0.5">
+          <AlertCircle className="w-3 h-3" />
           {error.message}
         </p>
       )}

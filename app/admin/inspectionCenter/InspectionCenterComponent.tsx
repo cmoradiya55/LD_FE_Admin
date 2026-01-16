@@ -11,23 +11,25 @@ import {
     MapPin,
     UserCircle2,
     Phone,
-    Mail,
     Plus,
     X,
     Users,
     ArrowRight,
-    Search,
+    Verified,
+    FileText,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { createUser, getCitySuggestions, getInspectionCentersData, getInspectorByManager, putUpdateInspectionCenter } from '@/utils/axios/auth';
+import { createUser, getCitySuggestions, getInspectionCentersData, putUpdateInspectionCenter } from '@/utils/axios/auth';
+import DocumentsPreviewModal from '@/components/DocumentsPreviewModal/DocumentsPreviewModal';
 
 type Manager = {
     id: number;
     name: string;
     phone: string;
     isPrimary?: boolean;
+    documentStatus?: number;
     inspectorCount?: number;
     imageUrl?: string;
 };
@@ -57,13 +59,23 @@ type ManagerFormValues = {
     mobile: string;
 };
 
-// API Response Types
 type ApiManager = {
     id: number;
     name: string;
     countryCode: number;
     mobileNumber: number;
+    email: string | null;
     isActive: boolean;
+    documentStatus: number;
+    documentStatusName: string;
+    remarks: string | null;
+    selfieImage: string | null;
+    aadharFrontImage: string | null;
+    aadharBackImage: string | null;
+    panImage: string | null;
+    aadharNumber: string | null;
+    panNumber: string | null;
+    inspectorCount: number;
 };
 
 type ApiInspectionCentre = {
@@ -83,16 +95,14 @@ type ApiInspectionCenterData = {
     managers: ApiManager[];
 };
 
-type ApiResponse = {
-    code: number;
-    type: string;
-    message: string;
-    data: ApiInspectionCenterData[];
-};
 
 
-const useInspectionCentersData = () => {
-    return useQuery<ApiInspectionCenterData[]>({
+type PincodeOption = { value: string; label: string };
+
+const InspectionCenterComponent = () => {
+    const router = useRouter();
+    
+    const { data: inspectionCentersData, isLoading, isError, refetch: refetchInspectionCentersData } = useQuery<ApiInspectionCenterData[]>({
         queryKey: ['GET_INSPECTION_CENTERS_DATA'],
         queryFn: async () => {
             try {
@@ -111,43 +121,7 @@ const useInspectionCentersData = () => {
         refetchInterval: false,
         refetchOnWindowFocus: false,
     });
-};
 
-type PincodeOption = { value: string; label: string };
-
-const useCitySuggestions = (query: string, cityId: number | null) => {
-    return useQuery<PincodeOption[]>({
-        queryKey: ['GET_CITY_SUGGESTIONS', cityId, query],
-        enabled: !!cityId && !!query && query.trim().length >= 2,
-        queryFn: async () => {
-            const response = await getCitySuggestions({
-                q: query,
-                page: 1,
-                limit: 20,
-                cityId,
-            });
-            console.log('response', response);
-
-            const mapped = response.data.map((item: any) => {
-                return {
-                    value: item.pincode_id,
-                    label: item.formatted,
-                };
-            });
-
-            return mapped as PincodeOption[];
-        },
-    });
-};
-
-
-
-const InspectionCenterComponent = () => {
-    const router = useRouter();
-    const { data: inspectionCentersData, isLoading, isError } = useInspectionCentersData();
-    const { refetch: refetchInspectionCentersData } = useInspectionCentersData();
-
-    // Transform API data to component format
     const transformedCenters: InspectionCenter[] = useMemo(() => {
         if (!inspectionCentersData || !Array.isArray(inspectionCentersData) || inspectionCentersData.length === 0) {
             return [];
@@ -160,6 +134,9 @@ const InspectionCenterComponent = () => {
                     name: item.managers[0].name,
                     phone: `+${item.managers[0].countryCode} ${item.managers[0].mobileNumber}`,
                     isPrimary: true,
+                    documentStatus: item.managers[0].documentStatus,
+                    inspectorCount: item.managers[0].inspectorCount || 0,
+                    imageUrl: item.managers[0].selfieImage || undefined,
                 }
                 : null;
 
@@ -186,21 +163,40 @@ const InspectionCenterComponent = () => {
     const [isEditingAddress, setIsEditingAddress] = useState(false);
     const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
     const [isEditingManager, setIsEditingManager] = useState(false);
+    const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState(false);
 
-    // Local state for pincode search input & dropdown visibility
     const [pincodeSearch, setPincodeSearch] = useState('');
     const [showPincodeSuggestions, setShowPincodeSuggestions] = useState(false);
 
-    // Update centers when API data changes - ensure city data from API is used
+    const {data: pincodeOptions = [], isLoading: isPincodeLoading} = useQuery<PincodeOption[]>({
+        queryKey: ['GET_CITY_SUGGESTIONS', pincodeSearch, selectedCenterId],
+        queryFn: async () => {
+            const response = await getCitySuggestions({
+                q: pincodeSearch,
+                page: 1,
+                limit: 20,
+                cityId: selectedCenterId,
+            });
+
+            const mapped = response.data.map((item: any) => {
+                return {
+                    value: item.pincode_id,
+                    label: item.formatted,
+                };
+            });
+
+            return mapped as PincodeOption[];
+        },
+        enabled: !!selectedCenterId && !!pincodeSearch && pincodeSearch.trim().length >= 2,
+    });
+
     useEffect(() => {
         if (transformedCenters.length > 0) {
             setCenters(transformedCenters);
-            // Set selected center if not already set
             if (selectedCenterId === null && transformedCenters[0]?.id) {
                 setSelectedCenterId(transformedCenters[0].id);
             }
         } else if (transformedCenters.length === 0 && !isLoading) {
-            // Clear centers if API returns empty data
             setCenters([]);
             setSelectedCenterId(null);
         }
@@ -210,33 +206,47 @@ const InspectionCenterComponent = () => {
     const selectedCenter =
         centers.find((center) => center.id === selectedCenterId) ?? centers[0];
 
+    const selectedCenterManagerData = useMemo(() => {
+        if (!inspectionCentersData || !selectedCenterId) return null;
+        const centerData = inspectionCentersData.find((item: ApiInspectionCenterData) => item.id === selectedCenterId);
+        if (centerData?.managers && centerData.managers.length > 0) {
+            const manager = centerData.managers[0];
+            return {
+                selfieImage: manager.selfieImage,
+                aadharFrontImage: manager.aadharFrontImage,
+                aadharBackImage: manager.aadharBackImage,
+                panImage: manager.panImage,
+                aadharNumber: manager.aadharNumber,
+                panNumber: manager.panNumber,
+                name: manager.name,
+            };
+        }
+        return null;
+    }, [inspectionCentersData, selectedCenterId]);
+
+    const selectedManagerUserId = useMemo(() => {
+        if (!inspectionCentersData || !selectedCenterId) return undefined;
+        const centerData = inspectionCentersData.find((item: ApiInspectionCenterData) => item.id === selectedCenterId);
+        if (centerData?.managers && centerData.managers.length > 0) {
+            return centerData.managers[0].id;
+        }
+        return undefined;
+    }, [inspectionCentersData, selectedCenterId]);
+
+    const selectedManagerDocumentStatus = useMemo(() => {
+        if (!inspectionCentersData || !selectedCenterId) return undefined;
+        const centerData = inspectionCentersData.find((item: ApiInspectionCenterData) => item.id === selectedCenterId);
+        if (centerData?.managers && centerData.managers.length > 0) {
+            return centerData.managers[0].documentStatus;
+        }
+        return undefined;
+    }, [inspectionCentersData, selectedCenterId]);
+
     const hasAddress =
         !!selectedCenter?.addressLine && selectedCenter.addressLine.trim().length > 0;
     const hasManager = !!selectedCenter?.manager;
 
-    // Fetch inspectors for the selected manager
-    const { data: inspectorsData } = useQuery({
-        queryKey: ['GET_INSPECTORS_BY_MANAGER', selectedCenter?.manager?.id],
-        queryFn: async () => {
-            if (!selectedCenter?.manager?.id) return [];
-            try {
-                const response = await getInspectorByManager(String(selectedCenter.manager.id));
-                if (response?.code === 200 && response?.data) {
-                    return response.data;
-                }
-                return [];
-            } catch (error) {
-                console.error("Error fetching inspectors:", error);
-                toast.error("Error fetching inspectors");
-                return [];
-            }
-        },
-        enabled: !!selectedCenter?.manager?.id,
-        retry: false,
-        refetchOnWindowFocus: false,
-    });
-
-    const inspectorCount = inspectorsData?.length ?? 0;
+    const inspectorCount = selectedCenter?.manager?.inspectorCount ?? 0;
 
     const {
         control: addressControl,
@@ -252,10 +262,10 @@ const InspectionCenterComponent = () => {
         },
     });
 
-    const {
-        data: pincodeOptions = [],
-        isLoading: isPincodeLoading,
-    } = useCitySuggestions(pincodeSearch, selectedCenterId);
+    // const {
+    //     data: pincodeOptions = [],
+    //     isLoading: isPincodeLoading,
+    // } = useCitySuggestions(pincodeSearch, selectedCenterId);
 
     const {
         control: managerControl,
@@ -270,11 +280,10 @@ const InspectionCenterComponent = () => {
     });
 
     const handleAddCity = () => {
-        console.log('Add City clicked');
+        // TODO: Implement add city functionality
     };
 
     const handleAddAddress = () => {
-        // Open in "create" mode with empty fields
         setIsEditingAddress(false);
         resetAddressForm({
             addressLine: '',
@@ -344,19 +353,17 @@ const InspectionCenterComponent = () => {
 
         try {
             const response = await createUser(payload);
-            console.log('Response:', response);
-
-            if (response?.code === 200) {
-                await refetchInspectionCentersData();
+            if (response?.code === 201) {
                 toast.success("Manager created successfully");
+                await refetchInspectionCentersData();
             }
-
             setIsManagerModalOpen(false);
             setIsEditingManager(false);
             resetManagerForm({
                 fullName: '',
                 mobile: '',
             });
+
         } catch (error) {
             console.error('Failed to create user:', error);
             toast.error("Failed to create user");
@@ -631,10 +638,11 @@ const InspectionCenterComponent = () => {
                                                 <p className="text-sm font-semibold text-gray-900 sm:text-sm">
                                                     {selectedCenter.manager.name}
                                                 </p>
-                                                {selectedCenter.manager.isPrimary && (
-                                                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
-                                                        Primary
-                                                    </span>
+                                                {selectedCenter.manager.documentStatus === 3 && (
+                                                    <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 rounded-full px-2 py-0.5">
+                                                        <Verified className="h-3 w-3 text-green-500" />
+                                                        Verified
+                                                    </div>
                                                 )}
                                             </div>
 
@@ -645,6 +653,17 @@ const InspectionCenterComponent = () => {
                                                 </span>
                                             </div>
                                         </div>
+
+                                        {/* Show Documents Button */}
+                                        <Button
+                                            variant="document"
+                                            size="sm"
+                                            className="px-1.5 text-[10px] font-medium"
+                                            onClick={() => setIsDocumentsModalOpen(true)}
+                                        >
+                                            <FileText className="mr-1.5 h-3 w-3" />
+                                            Show Documents
+                                        </Button>
                                     </div>
 
                                     {/* Inspector Team Section */}
@@ -653,7 +672,7 @@ const InspectionCenterComponent = () => {
                                         onClick={() => {
                                             if (selectedCenter?.manager) {
                                                 router.push(
-                                                    `/inspectionCenter/${selectedCenter.manager.id}`,
+                                                    `/admin/inspectionCenter/${selectedCenter.manager.id}`,
                                                 );
                                             }
                                         }}
@@ -760,7 +779,6 @@ const InspectionCenterComponent = () => {
                                                     const value = e.target.value;
                                                     setPincodeSearch(value);
                                                     setShowPincodeSuggestions(true);
-                                                    // Clear selected value in form until user picks one
                                                     field.onChange('');
                                                 }}
                                                 onFocus={() => {
@@ -769,11 +787,7 @@ const InspectionCenterComponent = () => {
                                                     }
                                                 }}
                                                 onBlur={() => {
-                                                    // Delay hiding suggestions to allow click events
-                                                    setTimeout(
-                                                        () => setShowPincodeSuggestions(false),
-                                                        200,
-                                                    );
+                                                    setTimeout(() => setShowPincodeSuggestions(false), 200);
                                                 }}
                                                 placeholder={
                                                     isPincodeLoading
@@ -927,6 +941,21 @@ const InspectionCenterComponent = () => {
                     </div>
                 </div>
             )}
+
+            {/* Documents Modal */}
+            <DocumentsPreviewModal
+                isOpen={isDocumentsModalOpen}
+                onClose={() => setIsDocumentsModalOpen(false)}
+                documents={selectedCenterManagerData}
+                userId={selectedManagerUserId}
+                documentStatus={selectedManagerDocumentStatus}
+                onAccept={async () => {
+                    await refetchInspectionCentersData();
+                }}
+                onReject={async () => {
+                    await refetchInspectionCentersData();
+                }}
+            />
 
         </div>
     );
