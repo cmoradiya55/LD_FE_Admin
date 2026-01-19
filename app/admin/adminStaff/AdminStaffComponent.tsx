@@ -115,6 +115,7 @@ const AdminStaffComponent = () => {
     const handleViewDocuments = (staffMember: StaffMember) => {
         setSelectedStaff(staffMember);
         setIsDocumentsModalOpen(true);
+        refetchStaff();
     };
 
     const selectedStaffDocuments = selectedStaff ? {
@@ -318,15 +319,27 @@ const AdminStaffComponent = () => {
 
                             {/* Document Verify Button */}
                             <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="rounded-full px-3 text-[11px] sm:px-4 sm:text-xs"
-                                    onClick={() => handleViewDocuments(member)}
-                                >
-                                    <FileText className="mr-1.5 h-3 w-3" />
-                                    Document Verify
-                                </Button>
+                                {member.documentStatus === 3 ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="px-3 text-[11px] sm:px-4 sm:text-xs"
+                                        onClick={() => handleViewDocuments(member)}
+                                    >
+                                        <FileText className="h-3 w-3" />
+                                        View Documents
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        variant="primary"
+                                        size="sm"
+                                        className="px-3 text-[11px] sm:px-4 sm:text-xs"
+                                        onClick={() => handleViewDocuments(member)}
+                                    >
+                                        <FileText className="mr-1.5 h-3 w-3" />
+                                        Document Verify
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -334,72 +347,74 @@ const AdminStaffComponent = () => {
             </div>
 
             {/* Add Staff Modal */}
-            {isStaffModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-                    <div className="w-full max-w-md rounded-2xl border bg-white shadow-xl">
-                        <div className="flex items-center justify-between border-b px-4 py-3 sm:px-5">
-                            <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                                    Staff Management
-                                </p>
-                                <h2 className="text-sm font-semibold text-gray-900 sm:text-base">
-                                    Add Staff
-                                </h2>
-                            </div>
-                            <button
-                                type="button"
-                                className="p-1 rounded-full bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors duration-200 hover:bg-gray-200"
-                                onClick={() => setIsStaffModalOpen(false)}
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
-
-                        <form
-                            onSubmit={handleStaffSubmit(onSubmitStaff)}
-                            className="space-y-4 px-4 py-4 sm:space-y-5 sm:px-5 sm:py-5"
-                        >
-                            <TextInput
-                                name="name"
-                                control={staffControl}
-                                label="Staff Name"
-                                placeholder="Enter staff full name"
-                                required
-                                error={staffErrors.name}
-                                inputClassName="px-3 py-2 text-sm"
-                            />
-
-                            <MobileInput
-                                name="mobileNo"
-                                control={staffControl}
-                                label="Mobile Number"
-                                required
-                                error={staffErrors.mobileNo}
-                                inputClassName="px-3 py-2 text-sm"
-                            />
-
-                            <div className="flex justify-end gap-2 pt-1">
-                                <Button
+            {
+                isStaffModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+                        <div className="w-full max-w-md rounded-2xl border bg-white shadow-xl">
+                            <div className="flex items-center justify-between border-b px-4 py-3 sm:px-5">
+                                <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                                        Staff Management
+                                    </p>
+                                    <h2 className="text-sm font-semibold text-gray-900 sm:text-base">
+                                        Add Staff
+                                    </h2>
+                                </div>
+                                <button
                                     type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="rounded-full px-3 text-[11px]"
+                                    className="p-1 rounded-full bg-gray-100 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors duration-200 hover:bg-gray-200"
                                     onClick={() => setIsStaffModalOpen(false)}
                                 >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    size="sm"
-                                    className="rounded-full px-4 text-[11px]"
-                                >
-                                    Add Staff
-                                </Button>
+                                    <X className="h-4 w-4" />
+                                </button>
                             </div>
-                        </form>
+
+                            <form
+                                onSubmit={handleStaffSubmit(onSubmitStaff)}
+                                className="space-y-4 px-4 py-4 sm:space-y-5 sm:px-5 sm:py-5"
+                            >
+                                <TextInput
+                                    name="name"
+                                    control={staffControl}
+                                    label="Staff Name"
+                                    placeholder="Enter staff full name"
+                                    required
+                                    error={staffErrors.name}
+                                    inputClassName="px-3 py-2 text-sm"
+                                />
+
+                                <MobileInput
+                                    name="mobileNo"
+                                    control={staffControl}
+                                    label="Mobile Number"
+                                    required
+                                    error={staffErrors.mobileNo}
+                                    inputClassName="px-3 py-2 text-sm"
+                                />
+
+                                <div className="flex justify-end gap-2 pt-1">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="rounded-full px-3 text-[11px]"
+                                        onClick={() => setIsStaffModalOpen(false)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        className="rounded-full px-4 text-[11px]"
+                                    >
+                                        Add Staff
+                                    </Button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Documents Modal */}
             <DocumentsPreviewModal
@@ -419,7 +434,7 @@ const AdminStaffComponent = () => {
                     await refetchStaff();
                 }}
             />
-        </div>
+        </div >
     );
 };
 

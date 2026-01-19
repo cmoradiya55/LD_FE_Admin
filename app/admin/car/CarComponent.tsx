@@ -8,7 +8,7 @@ import { Button } from '@/components/Button/Button';
 import SelectInput from '@/components/FormComponent/SelectInput';
 import { OwnerType, UsedCarListingStatus, ExteriorFields, EngineAndTransmissionFields, SteeringSuspensionAndBrakesFields, AirConditioningFields, ElectricalFields, InteriorFields, SeatsFields } from '@/lib/data';
 import { CarData } from '@/lib/CarData';
-import { FileText, Filter, MapPin, UserRound, Clock, CheckCircle2, BadgeCheck, XCircle } from 'lucide-react';
+import { FileText, Filter, MapPin, UserRound, Clock, CheckCircle2, BadgeCheck, XCircle, AlertCircle, Ban } from 'lucide-react';
 import { getAllUsedCars, getInspectionCentersData, getUsedCarDetails } from '@/utils/axios/auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/common';
@@ -62,62 +62,12 @@ const statusFilters = [
     { key: UsedCarListingStatus.REJECTED_BY_ADMIN, label: 'Rejected (Admin)' },
 ];
 
-const statusLabel = (status: UsedCarListingStatus) => {
-    switch (status) {
-        case UsedCarListingStatus.PENDING:
-            return 'Pending';
-        case UsedCarListingStatus.INSPECTOR_ASSIGNED:
-            return 'Inspector Assigned';
-        case UsedCarListingStatus.INSPECTION_STARTED:
-            return 'Inspection Started';
-        case UsedCarListingStatus.INSPECTION_COMPLETED:
-            return 'Inspection Completed';
-        case UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF:
-            return 'Details Updated';
-        case UsedCarListingStatus.APPROVED_BY_MANAGER:
-            return 'Approved by Manager';
-        case UsedCarListingStatus.APPROVED_BY_ADMIN:
-            return 'Approved by Admin';
-        case UsedCarListingStatus.LISTED:
-            return 'Listed';
-        case UsedCarListingStatus.REJECTED_BY_ADMIN:
-            return 'Rejected by Admin';
-        default:
-            return 'Status';
-    }
-};
-
-const getStatusBadgeColor = (status: UsedCarListingStatus): { bgColor: string; icon: React.ReactNode } => {
-    switch (status) {
-        case UsedCarListingStatus.PENDING:
-            return { bgColor: 'bg-gray-500', icon: <Clock className="h-3 w-3" /> };
-        case UsedCarListingStatus.INSPECTOR_ASSIGNED:
-            return { bgColor: 'bg-blue-500', icon: <UserRound className="h-3 w-3" /> };
-        case UsedCarListingStatus.INSPECTION_STARTED:
-            return { bgColor: 'bg-yellow-500', icon: <Clock className="h-3 w-3" /> };
-        case UsedCarListingStatus.INSPECTION_COMPLETED:
-            return { bgColor: 'bg-emerald-500', icon: <CheckCircle2 className="h-3 w-3" /> };
-        case UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF:
-            return { bgColor: 'bg-purple-500', icon: <FileText className="h-3 w-3" /> };
-        case UsedCarListingStatus.APPROVED_BY_MANAGER:
-            return { bgColor: 'bg-indigo-500', icon: <BadgeCheck className="h-3 w-3" /> };
-        case UsedCarListingStatus.APPROVED_BY_ADMIN:
-            return { bgColor: 'bg-primary-500', icon: <CheckCircle2 className="h-3 w-3" /> };
-        case UsedCarListingStatus.LISTED:
-            return { bgColor: 'bg-green-500', icon: <CheckCircle2 className="h-3 w-3" /> };
-        case UsedCarListingStatus.REJECTED_BY_ADMIN:
-            return { bgColor: 'bg-red-500', icon: <XCircle className="h-3 w-3" /> };
-        default:
-            return { bgColor: 'bg-gray-500', icon: <Clock className="h-3 w-3" /> };
-    }
-};
-
 const getOwnerTypeLabel = (value: OwnerType): string => {
     const ownerTypeMap: Record<OwnerType, string> = {
-        [OwnerType.FIRST]: 'First Owner',
-        [OwnerType.SECOND]: 'Second Owner',
-        [OwnerType.THIRD]: 'Third Owner',
-        [OwnerType.FOURTH]: 'Fourth Owner',
+        [OwnerType.FIRST]: '1st Owner',
+        [OwnerType.SECOND]: '2nd Owner',
+        [OwnerType.THIRD]: '3rd Owner',
+        [OwnerType.FOURTH]: '4th Owner',
     };
     return ownerTypeMap[value] || '';
 };
@@ -234,7 +184,7 @@ const CarComponent = () => {
 
     const managerOptions = useMemo(() => {
         let managerArray: string[] = [];
-        
+
         if (!hasCityFilter) {
             const managerMap = new Map<number, string>();
             if (inspectionCentersData && Array.isArray(inspectionCentersData)) {
@@ -255,7 +205,7 @@ const CarComponent = () => {
                 managerArray = Array.from(managersMap.values()).sort();
             }
         }
-        
+
         return [
             { value: 'All Managers', label: 'All Managers' },
             ...managerArray.map((manager) => ({ value: manager, label: manager })),
@@ -312,7 +262,7 @@ const CarComponent = () => {
             if (managerId != null) {
                 queryParams.append('managerId', managerId.toString());
             }
-            
+
             const filterQuery = queryParams.toString();
             const response = await getAllUsedCars(filterQuery || '', 1, 50);
             if (response?.code === 200 && response?.data) {
@@ -404,11 +354,11 @@ const CarComponent = () => {
         };
 
         // Handle inspection images from different possible locations
-        const inspectionImages = carDetailsData.inspectionImages || 
-                                 carDetailsData.inspection_images || 
-                                 inspectionInfo.inspectionImages || 
-                                 inspectionInfo.inspection_images || 
-                                 [];
+        const inspectionImages = carDetailsData.inspectionImages ||
+            carDetailsData.inspection_images ||
+            inspectionInfo.inspectionImages ||
+            inspectionInfo.inspection_images ||
+            [];
 
         if (Array.isArray(inspectionImages) && inspectionImages.length > 0) {
             inspectionImages.forEach((imageData: any) => {
@@ -420,8 +370,8 @@ const CarComponent = () => {
                     // Handle isDamage as both boolean and string
                     const isDamage = imageData.isDamage !== undefined ? imageData.isDamage :
                         (imageData.is_damage !== undefined ? imageData.is_damage : false);
-                    const damageValue = typeof isDamage === "boolean" 
-                        ? (isDamage ? "yes" : "no") 
+                    const damageValue = typeof isDamage === "boolean"
+                        ? (isDamage ? "yes" : "no")
                         : (isDamage === "yes" || isDamage === "no" ? isDamage : "no");
 
                     const fieldValue: any = {
@@ -600,17 +550,17 @@ const CarComponent = () => {
             {/* Car Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredCars.map((car) => (
-                    <div key={car.id} className="relative">
-                        <CarCard
-                            car={car}
-                            showFavorite={false}
-                            showStatusBadge
-                            statusBadgeText={statusLabel(car.status)}
-                            statusBadgeColor={getStatusBadgeColor(car.status).bgColor}
-                            statusBadgeIcon={getStatusBadgeColor(car.status).icon}
-                        />
+                    <div key={car.id} className="relative mb-2">
+                        <div className='border border-gray-200 rounded-xl'>
+                            <CarCard
+                                car={car}
+                                showFavorite={false}
+                                showStatusBadge
+                                status={car.status}
+                            />
+                        </div>
                         {reportButtonLabels[car.status] && (
-                            <div className='p-3'>
+                            <div className='mt-2'>
                                 <Button
                                     variant="primary"
                                     className="text-[11px] px-3 py-1 w-full"
@@ -734,7 +684,7 @@ const CarComponent = () => {
                         }
 
                         // Status 600 or 700: APPROVED_BY_MANAGER or APPROVED_BY_ADMIN -> Show ViewAllInspectionReport
-                        if (selectedCarStatus === UsedCarListingStatus.APPROVED_BY_MANAGER || 
+                        if (selectedCarStatus === UsedCarListingStatus.APPROVED_BY_MANAGER ||
                             selectedCarStatus === UsedCarListingStatus.APPROVED_BY_ADMIN ||
                             selectedCarStatus === UsedCarListingStatus.REJECTED_BY_ADMIN ||
                             selectedCarStatus === UsedCarListingStatus.LISTED) {

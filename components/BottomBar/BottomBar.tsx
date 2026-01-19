@@ -28,8 +28,7 @@ const adminMenuItems = [
 
 const managerMenuItems = [
   { id: 'managerDashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'staff', label: 'Staff', icon: Users },
-  { id: 'inspectionCenter', label: 'Center', icon: BadgeCheck },
+  { id: 'inspector', label: 'Inspector', icon: Users },
   { id: 'car', label: 'Car', icon: CarFront },
   { id: 'profile', label: 'Profile', icon: User },
 ];
