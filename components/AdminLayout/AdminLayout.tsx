@@ -10,7 +10,6 @@ import Sidebar from '@/components/Sidebar/Sidebar';
 import BottomBar from '@/components/BottomBar/BottomBar';
 import Header from '@/components/Header/Header';
 
-
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
@@ -115,6 +114,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const managerRouteMap: { [key: string]: string } = {
       'managerDashboard': '/manager/managerDashboard',
       'inspectorList': '/manager/inspectorList',
+      'inspector': '/manager/inspectorList',
       'car': '/manager/carList',
       'carList': '/manager/carList',
       'profile': '/manager/profile',

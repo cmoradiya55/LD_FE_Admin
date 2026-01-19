@@ -114,7 +114,7 @@ const CarListComponent = () => {
         refetchOnWindowFocus: false,
     });
 
-    const { data: inspectorsResponse, isLoading: isLoadingInspectors, isError: isInspectorsError } = useQuery({
+    const { data: inspectorsResponse, isLoading: isLoadingInspectors, isError: isInspectorsError, refetch: refetchInspectors } = useQuery({
         queryKey: ['GET_INSPECTORS'],
         queryFn: async () => {
             const response = await getInspectors();
@@ -273,6 +273,7 @@ const CarListComponent = () => {
             if (response?.code === 200) {
                 toast.success('Car assigned to self successfully');
                 refetchCars();
+                refetchInspectors();
             } else {
                 console.error('Failed to assign to self:', response);
                 toast.error(response?.message || 'Failed to assign to self');
@@ -398,7 +399,7 @@ const CarListComponent = () => {
                                         <CarCard
                                             car={car}
                                             showStatusBadge={true}
-                                            statusBadgeText={statusBadgeText}
+                                            status={car.status}
                                         />
                                         {(car as any).inspector && (
                                             <div className="px-4 pt-2 pb-2">

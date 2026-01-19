@@ -366,15 +366,27 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
 
                             {/* Document Verify Button */}
                             <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="rounded-full px-3 text-[11px] sm:px-4 sm:text-xs"
-                                    onClick={() => handleViewDocuments(inspector)}
-                                >
-                                    <FileText className="mr-1.5 h-3 w-3" />
-                                    Document Verify
-                                </Button>
+                                {inspector.documentStatus === 3 ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="px-3 text-[11px] sm:px-4 sm:text-xs"
+                                        onClick={() => handleViewDocuments(inspector)}
+                                    >
+                                        <FileText className="mr-1.5 h-3 w-3" />
+                                        View Documents
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        variant="primary"
+                                        size="sm"
+                                        className="px-3 text-[11px] sm:px-4 sm:text-xs"
+                                        onClick={() => handleViewDocuments(inspector)}
+                                    >
+                                        <FileText className="mr-1.5 h-3 w-3" />
+                                        Document Verify
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     ))}
