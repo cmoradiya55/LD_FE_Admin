@@ -101,7 +101,7 @@ type PincodeOption = { value: string; label: string };
 
 const InspectionCenterComponent = () => {
     const router = useRouter();
-    
+
     const { data: inspectionCentersData, isLoading, isError, refetch: refetchInspectionCentersData } = useQuery<ApiInspectionCenterData[]>({
         queryKey: ['GET_INSPECTION_CENTERS_DATA'],
         queryFn: async () => {
@@ -168,7 +168,7 @@ const InspectionCenterComponent = () => {
     const [pincodeSearch, setPincodeSearch] = useState('');
     const [showPincodeSuggestions, setShowPincodeSuggestions] = useState(false);
 
-    const {data: pincodeOptions = [], isLoading: isPincodeLoading} = useQuery<PincodeOption[]>({
+    const { data: pincodeOptions = [], isLoading: isPincodeLoading } = useQuery<PincodeOption[]>({
         queryKey: ['GET_CITY_SUGGESTIONS', pincodeSearch, selectedCenterId],
         queryFn: async () => {
             const response = await getCitySuggestions({
@@ -262,11 +262,6 @@ const InspectionCenterComponent = () => {
         },
     });
 
-    // const {
-    //     data: pincodeOptions = [],
-    //     isLoading: isPincodeLoading,
-    // } = useCitySuggestions(pincodeSearch, selectedCenterId);
-
     const {
         control: managerControl,
         handleSubmit: handleManagerSubmit,
@@ -281,6 +276,8 @@ const InspectionCenterComponent = () => {
 
     const handleAddCity = () => {
         // TODO: Implement add city functionality
+        console.log("Add city functionality to be implemented");
+
     };
 
     const handleAddAddress = () => {
@@ -655,15 +652,29 @@ const InspectionCenterComponent = () => {
                                         </div>
 
                                         {/* Show Documents Button */}
-                                        <Button
-                                            variant="document"
-                                            size="sm"
-                                            className="px-1.5 text-[10px] font-medium"
-                                            onClick={() => setIsDocumentsModalOpen(true)}
-                                        >
-                                            <FileText className="mr-1.5 h-3 w-3" />
-                                            Show Documents
-                                        </Button>
+                                        <div>
+                                            {selectedCenter.manager.documentStatus === 3 ? (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="px-3 text-[11px] sm:px-4 sm:text-xs"
+                                                    onClick={() => setIsDocumentsModalOpen(true)}
+                                                >
+                                                    <FileText className="mr-1.5 h-3 w-3" />
+                                                    View Documents
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    variant="primary"
+                                                    size="sm"
+                                                    className="px-3 text-[11px] sm:px-4 sm:text-xs"
+                                                    onClick={() => setIsDocumentsModalOpen(true)}
+                                                >
+                                                    <FileText className="mr-1.5 h-3 w-3" />
+                                                    Document Verify
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Inspector Team Section */}

@@ -97,7 +97,7 @@ export default function Login() {
     const result = await login(cleanedContact, otp);
     
     if (!result.success) {
-      setError(result.error || 'Invalid OTP');
+      setError('Invalid OTP. Please try again.');
     }
     // If successful, login function will handle redirect to dashboard
     
@@ -120,7 +120,7 @@ export default function Login() {
       setResendCooldown(60);
       setTimeout(() => setSuccess(''), 3000);
     } else {
-      setError(result.error || 'Failed to resend OTP');
+      setError('Failed to resend OTP');
     }
     
     setLoading(false);

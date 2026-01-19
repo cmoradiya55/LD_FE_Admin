@@ -12,8 +12,14 @@ import {
     UserRoundCheck,
     CheckCircle2,
     Clock,
+    UserRound,
+    FileText,
+    XCircle,
+    AlertCircle,
+    Ban,
 } from 'lucide-react';
 import { CarData } from '@/lib/CarData';
+import { UsedCarListingStatus } from '@/lib/data';
 
 interface CarCardProps {
     car: CarData;
@@ -22,11 +28,44 @@ interface CarCardProps {
     isFavorite?: boolean;
     onFavoriteClick?: (e: React.MouseEvent, carId: string) => void;
     showStatusBadge?: boolean;
-    statusBadgeText?: string;
-    statusBadgeColor?: string;
-    statusBadgeIcon?: React.ReactNode;
+    status?: UsedCarListingStatus;
     className?: string;
 }
+
+const getStatusBadgeConfig = (status: UsedCarListingStatus): { bgColor: string; icon: React.ReactNode; label: string } => {
+    switch (status) {
+        case UsedCarListingStatus.PENDING:
+            return { bgColor: 'bg-gray-500', icon: <Clock className="h-3 w-3" />, label: 'Pending' };
+        case UsedCarListingStatus.INSPECTOR_ASSIGNED:
+            return { bgColor: 'bg-blue-500', icon: <UserRound className="h-3 w-3" />, label: 'Inspector Assigned' };
+        case UsedCarListingStatus.INSPECTION_STARTED:
+            return { bgColor: 'bg-yellow-500', icon: <Clock className="h-3 w-3" />, label: 'Inspection Started' };
+        case UsedCarListingStatus.INSPECTION_COMPLETED:
+            return { bgColor: 'bg-emerald-500', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Inspection Completed' };
+        case UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF:
+            return { bgColor: 'bg-purple-500', icon: <FileText className="h-3 w-3" />, label: 'Details Updated' };
+        case UsedCarListingStatus.APPROVED_BY_MANAGER:
+            return { bgColor: 'bg-indigo-500', icon: <BadgeCheck className="h-3 w-3" />, label: 'Approved by Manager' };
+        case UsedCarListingStatus.APPROVED_BY_ADMIN:
+            return { bgColor: 'bg-primary-500', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Approved by Admin' };
+        case UsedCarListingStatus.LISTED:
+            return { bgColor: 'bg-green-500', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Listed' };
+        case UsedCarListingStatus.SOLD:
+            return { bgColor: 'bg-purple-600', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Sold' };
+        case UsedCarListingStatus.REJECTED_BY_MANAGER:
+            return { bgColor: 'bg-red-500', icon: <XCircle className="h-3 w-3" />, label: 'Rejected by Manager' };
+        case UsedCarListingStatus.REJECTED_BY_ADMIN:
+            return { bgColor: 'bg-red-500', icon: <XCircle className="h-3 w-3" />, label: 'Rejected by Admin' };
+        case UsedCarListingStatus.REJECTED_BY_CUSTOMER:
+            return { bgColor: 'bg-red-500', icon: <XCircle className="h-3 w-3" />, label: 'Rejected by Customer' };
+        case UsedCarListingStatus.EXPIRED:
+            return { bgColor: 'bg-orange-500', icon: <AlertCircle className="h-3 w-3" />, label: 'Expired' };
+        case UsedCarListingStatus.CANCELLED:
+            return { bgColor: 'bg-gray-500', icon: <Ban className="h-3 w-3" />, label: 'Cancelled' };
+        default:
+            return { bgColor: 'bg-gray-500', icon: <Clock className="h-3 w-3" />, label: 'Unknown' };
+    }
+};
 
 const CarCard: React.FC<CarCardProps> = ({
     car,
@@ -35,11 +74,10 @@ const CarCard: React.FC<CarCardProps> = ({
     isFavorite = false,
     onFavoriteClick,
     showStatusBadge = false,
-    statusBadgeText,
-    statusBadgeColor,
-    statusBadgeIcon,
+    status,
     className = "",
 }) => {
+    const statusConfig = status ? getStatusBadgeConfig(status) : null;
     const handleClick = () => {
         if (onClick) {
             onClick(car.id);
@@ -97,11 +135,11 @@ const CarCard: React.FC<CarCardProps> = ({
                         </div>
 
                         {/* Status Badge (used by Manager lists) */}
-                        {showStatusBadge && statusBadgeText && (
+                        {showStatusBadge && statusConfig && (
                             <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20">
-                                <div className={`flex items-center gap-1.5 ${statusBadgeColor || 'bg-gray-500'} text-white px-2 py-1 rounded-full shadow-lg`}>
-                                    {statusBadgeIcon || <Clock className="h-3 w-3" />}
-                                    <span className="text-[11px] font-semibold">{statusBadgeText}</span>
+                                <div className={`flex items-center gap-1.5 ${statusConfig.bgColor} text-white px-2 py-1 rounded-full shadow-lg`}>
+                                    {statusConfig.icon}
+                                    <span className="text-[11px] font-semibold">{statusConfig.label}</span>
                                 </div>
                             </div>
                         )}
@@ -178,12 +216,14 @@ const CarCard: React.FC<CarCardProps> = ({
                 </div>
 
                 {/* Location Badge */}
-                <div className="flex items-center justify-between pt-1 px-3 sm:px-4 pb-3 sm:pb-4">
-                    <div className="inline-flex items-center gap-1 w-full sm:gap-1.5 bg-gray-100 px-2 py-0.5 sm:px-2.5 sm:py-2.5 text-[10px] sm:text-[13px] font-medium text-gray-600 rounded-lg group-hover:text-blue-600 transition-colors">
-                        <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-gray-600 font-bold group-hover:text-blue-600 transition-colors" />
-                        <span className="line-clamp-1">{car.location}</span>
+                {car.location && (
+                    <div className="flex items-center justify-between pt-1">
+                        <div className="inline-flex items-center gap-1 w-full sm:gap-1.5 bg-gray-100 px-2 py-0.5 sm:px-2.5 sm:py-2.5 text-[10px] sm:text-[13px] font-medium text-gray-600 rounded-b-lg group-hover:text-primary-600 transition-colors">
+                            <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-gray-600 font-bold group-hover:text-primary-600 transition-colors" />
+                            <span className="line-clamp-1">{car.location}</span>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
