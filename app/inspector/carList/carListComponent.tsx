@@ -37,10 +37,11 @@ const getKilometerDrivenLabel = (value: KilometerDriven): string => {
 
 const getOwnerTypeLabel = (value: OwnerType): string => {
     const ownerTypeMap: Record<OwnerType, string> = {
-        [OwnerType.FIRST]: 'First Owner',
-        [OwnerType.SECOND]: 'Second Owner',
-        [OwnerType.THIRD]: 'Third Owner',
-        [OwnerType.FOURTH]: 'Fourth Owner',
+        [OwnerType.FIRST]: '1st Owner',
+        [OwnerType.SECOND]: '2nd Owner',
+        [OwnerType.THIRD]: '3rd Owner',
+        [OwnerType.FOURTH]: '4th Owner',
+        [OwnerType.FIFTH]: '5th Owner',
     };
     return ownerTypeMap[value] || '';
 };
