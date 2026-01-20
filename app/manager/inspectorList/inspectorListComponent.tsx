@@ -164,7 +164,7 @@ const InspectorListComponent = () => {
     }
 
     return (
-        <div className="space-y-4 sm:space-y-6">
+        <div>
 
             {/* Page Header */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-5 sm:p-6">

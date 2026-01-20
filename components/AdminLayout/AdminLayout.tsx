@@ -204,7 +204,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     
     // Manager routes
     const managerRouteMap: { [key: string]: string } = {
-      'inspectorList': 'inspectorList',
+      'inspectorList': 'inspector',
       'carList': 'car',
       'car': 'car',
       'profile': 'profile',

@@ -22,6 +22,8 @@ interface InspectorListPageProps {
 
 export default async function InspectorListPage({ params }: InspectorListPageProps) {
     const { slug } = await params; // manager id
+    console.log("slugggg", slug);
+    
 
     if (!slug) {
         return (

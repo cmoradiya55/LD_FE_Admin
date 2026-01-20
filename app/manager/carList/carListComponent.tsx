@@ -1,6 +1,6 @@
 "use client";
-import { OverviewStatCard, PageHeader, LoadingSpinner } from '@/components/common';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { OverviewStatCard, PageHeader, LoadingSpinner, Pagination } from '@/components/common';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Car, CarFront, Clock3, CheckCircle2, UserCheck, UserRound, Filter, FileText } from 'lucide-react';
 import { CarData } from '@/lib/CarData';
@@ -43,10 +43,11 @@ const getKilometerDrivenLabel = (value: KilometerDriven): string => {
 
 const getOwnerTypeLabel = (value: OwnerType): string => {
     const ownerTypeMap: Record<OwnerType, string> = {
-        [OwnerType.FIRST]: 'First Owner',
-        [OwnerType.SECOND]: 'Second Owner',
-        [OwnerType.THIRD]: 'Third Owner',
-        [OwnerType.FOURTH]: 'Fourth Owner',
+        [OwnerType.FIRST]: '1st Owner',
+        [OwnerType.SECOND]: '2nd Owner',
+        [OwnerType.THIRD]: '3rd Owner',
+        [OwnerType.FOURTH]: '4th Owner',
+        [OwnerType.FIFTH]: '5th Owner',
     };
     return ownerTypeMap[value] || '';
 };
@@ -64,13 +65,32 @@ export type Inspector = {
 
 type FilterType = 'all' | 'assigned' | 'notAssigned' | 'inspectionPending' | 'inspectionCompleted' | 'detailsUpdated' | 'approvedByManager' | 'approvedByAdmin';
 
+const getStatusFromFilter = (filter: FilterType): number | undefined => {
+    switch (filter) {
+        case 'assigned':
+            return UsedCarListingStatus.INSPECTOR_ASSIGNED; // 200
+        case 'notAssigned':
+            return UsedCarListingStatus.PENDING; // 100
+        case 'inspectionPending':
+            return UsedCarListingStatus.INSPECTION_STARTED; // 300
+        case 'inspectionCompleted':
+            return UsedCarListingStatus.INSPECTION_COMPLETED; // 400
+        case 'detailsUpdated':
+            return UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF; // 500
+        case 'approvedByManager':
+            return UsedCarListingStatus.APPROVED_BY_MANAGER; // 600
+        // case 'approvedByAdmin':
+        //     return UsedCarListingStatus.APPROVED_BY_ADMIN; // 700
+        default:
+            return undefined;
+    }
+};
+
 const CarListComponent = () => {
     const router = useRouter();
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [allCars, setAllCars] = useState<(CarData & { inspectorId?: number; status?: number; inspector?: { id: number; name: string; mobileNumber: string; role: number; roleLabel: string } | null })[]>([]);
-    const [hasMore, setHasMore] = useState(true);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const loadMoreRef = useRef<HTMLDivElement | null>(null);
     const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
     const [selectedCar, setSelectedCar] = useState<CarData | null>(null);
     const [selectedInspector, setSelectedInspector] = useState<Inspector | null>(null);
@@ -78,9 +98,10 @@ const CarListComponent = () => {
     const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
 
     const { data: carsResponse, isLoading, isError, refetch: refetchCars } = useQuery({
-        queryKey: ['GET_MANAGER_USED_CAR_LIST', currentPage],
+        queryKey: ['GET_MANAGER_USED_CAR_LIST', currentPage, activeFilter],
         queryFn: async () => {
-            const response = await getCarListForManager(currentPage, PAGE_SIZE);
+            const statusFilter = getStatusFromFilter(activeFilter);
+            const response = await getCarListForManager(currentPage, PAGE_SIZE, statusFilter);
             if (response?.code === 200 && response?.data) {
                 const cars: (CarData & { inspectorId?: number; status?: number; inspector?: { id: number; name: string; mobileNumber: string; role: number; roleLabel: string } | null })[] = response.data.map((item: any) => ({
                     id: item.id?.toString() || '',
@@ -106,9 +127,9 @@ const CarListComponent = () => {
                 const total = meta.total || response.data.length;
                 const totalPages = meta.totalPages || Math.ceil(total / PAGE_SIZE);
 
-                return { cars, total, hasMore: currentPage < totalPages };
+                return { cars, total, totalPages };
             }
-            return { cars: [], total: 0, hasMore: false };
+            return { cars: [], total: 0, totalPages: 1 };
         },
         retry: false,
         refetchOnWindowFocus: false,
@@ -150,39 +171,12 @@ const CarListComponent = () => {
 
     useEffect(() => {
         if (!carsResponse) return;
-        setAllCars(prev => currentPage === 1 ? carsResponse.cars : [...prev, ...carsResponse.cars]);
-        setHasMore(carsResponse.hasMore);
-        setIsLoadingMore(false);
-    }, [carsResponse, currentPage]);
+        setAllCars(carsResponse.cars);
+        setTotalPages(carsResponse.totalPages);
+    }, [carsResponse]);
 
-    const filteredCars = useMemo(() => {
-        if (activeFilter === 'all') return allCars;
-
-        return allCars.filter((car: any) => {
-            const status = car.status;
-
-            switch (activeFilter) {
-                case 'assigned':
-                    return status === UsedCarListingStatus.INSPECTOR_ASSIGNED || car.inspectorId; //200
-                case 'notAssigned':
-                    return status === UsedCarListingStatus.PENDING && !car.inspectorId; //100
-                case 'inspectionPending':
-                    return (status === UsedCarListingStatus.INSPECTOR_ASSIGNED ||
-                        status === UsedCarListingStatus.INSPECTION_STARTED) &&
-                        status !== UsedCarListingStatus.INSPECTION_COMPLETED; //300
-                case 'inspectionCompleted':
-                    return status === UsedCarListingStatus.INSPECTION_COMPLETED; //400
-                case 'detailsUpdated':
-                    return status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF; //500
-                case 'approvedByManager':
-                    return status === UsedCarListingStatus.APPROVED_BY_MANAGER; //600
-                case 'approvedByAdmin':
-                    return status === UsedCarListingStatus.APPROVED_BY_ADMIN; //700 
-                default:
-                    return true;
-            }
-        });
-    }, [allCars, activeFilter]);
+    // Filter is now handled by the backend, so we use allCars directly
+    const filteredCars = useMemo(() => allCars, [allCars]);
 
     const carsOverviewStats = useMemo(() => {
         const totalCars = allCars.length || (carsResponse?.total || 0);
@@ -195,28 +189,6 @@ const CarListComponent = () => {
         return carsOverviewCardConfig.map((card) => ({ ...card, value: valuesMap[card.label] ?? "0" }));
     }, [allCars, carsResponse]);
 
-    useEffect(() => {
-        if (!hasMore || isLoading || isLoadingMore) return;
-
-        const target = loadMoreRef.current;
-        if (!target) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (!entries[0].isIntersecting || isLoadingMore) return;
-                setIsLoadingMore(true);
-                setCurrentPage(prev => prev + 1);
-            },
-            { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0.1 }
-        );
-
-        observer.observe(target);
-
-        return () => {
-            observer.disconnect();
-        };
-    }, [hasMore, isLoading, isLoadingMore]);
-
     const handleAssignClick = (car: CarData) => {
         setSelectedCar(car);
         setSelectedInspector(null);
@@ -227,6 +199,16 @@ const CarListComponent = () => {
         setSelectedInspector(inspector);
     };
 
+    const handleFilterChange = (filter: FilterType) => {
+        setActiveFilter(filter);
+        setCurrentPage(1);
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const handleCloseDialog = () => {
         setIsAssignDialogOpen(false);
         setSelectedCar(null);
@@ -234,7 +216,10 @@ const CarListComponent = () => {
     };
 
     const handleAssignInspection = async () => {
-        if (!selectedCar || !selectedInspector) return;
+        if (!selectedCar || !selectedInspector) {
+            toast.error('Please select an inspector');
+            return;
+        }
 
         const payload = {
             inspectorId: selectedInspector.id,
@@ -265,7 +250,7 @@ const CarListComponent = () => {
 
         try {
             const payload = {
-                managerId: parseInt(managerId.toString()),
+                inspectorId: parseInt(managerId.toString()),
                 usedCarId: parseInt(car.id)
             };
 
@@ -349,7 +334,7 @@ const CarListComponent = () => {
                     ].map((filter) => (
                         <button
                             key={filter.key}
-                            onClick={() => setActiveFilter(filter.key)}
+                            onClick={() => handleFilterChange(filter.key)}
                             className={`px-1 py-1 rounded-lg text-[10px] sm:text-[11px] font-medium transition-all duration-200 text-center shadow-md ${activeFilter === filter.key
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-50 text-gray-700 border border-gray-200'
@@ -377,63 +362,66 @@ const CarListComponent = () => {
                     <>
                         <div className="grid grid-cols-1 gap-4">
                             {filteredCars.map((car) => {
-                                const status = car.status;
-                                const statusBadgeText =
-                                    status === UsedCarListingStatus.APPROVED_BY_ADMIN
-                                        ? "Approved by Admin"
-                                        : status === UsedCarListingStatus.APPROVED_BY_MANAGER
-                                            ? "Approved by Manager"
-                                            : status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
-                                                ? "Details Updated by Staff"
-                                                : status === UsedCarListingStatus.INSPECTION_COMPLETED
-                                        ? "Inspection Completed"
-                                        : status === UsedCarListingStatus.INSPECTION_STARTED ||
-                                            status === UsedCarListingStatus.INSPECTOR_ASSIGNED
-                                            ? "Inspection Pending"
-                                            : status === UsedCarListingStatus.PENDING && !car.inspectorId
-                                                ? "Not Assigned"
-                                                : "Assigned";
+                                // const status = car.status;
+                                // const statusBadgeText =
+                                //     status === UsedCarListingStatus.APPROVED_BY_ADMIN
+                                //         ? "Approved by Admin"
+                                //         : status === UsedCarListingStatus.APPROVED_BY_MANAGER
+                                //             ? "Approved by Manager"
+                                //             : status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
+                                //                 ? "Details Updated by Staff"
+                                //                 : status === UsedCarListingStatus.INSPECTION_COMPLETED
+                                //         ? "Inspection Completed"
+                                //         : status === UsedCarListingStatus.INSPECTION_STARTED ||
+                                //             status === UsedCarListingStatus.INSPECTOR_ASSIGNED
+                                //             ? "Inspection Pending"
+                                //             : status === UsedCarListingStatus.PENDING && !car.inspectorId
+                                //                 ? "Not Assigned"
+                                //                 : "Assigned";
 
                                 return (
-                                    <div key={car.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-lg">
-                                        <CarCard
-                                            car={car}
-                                            showStatusBadge={true}
-                                            status={car.status}
-                                        />
+                                    <div key={car.id} className="overflow-hidden shadow-lg p-3 space-y-3">
+                                        <div className="rounded-xl border border-gray-200 mb-2">
+                                            <CarCard
+                                                car={car}
+                                                showStatusBadge={true}
+                                                status={car.status}
+                                            />
+                                        </div>
+
                                         {(car as any).inspector && (
-                                            <div className="px-4 pt-2 pb-2">
+                                            <div className="">
                                                 <div className={`flex items-center gap-2 px-1.5 py-1 border rounded-lg ${car.status === UsedCarListingStatus.APPROVED_BY_ADMIN
-                                                        ? 'bg-purple-50 border-purple-200'
-                                                        : car.status === UsedCarListingStatus.APPROVED_BY_MANAGER
-                                                            ? 'bg-indigo-50 border-indigo-200'
-                                                            : car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
-                                                                ? 'bg-amber-50 border-amber-200'
-                                                                : car.status === UsedCarListingStatus.INSPECTION_COMPLETED
-                                                    ? 'bg-emerald-50 border-emerald-200'
-                                                    : 'bg-blue-50 border-blue-200'
+                                                    ? 'bg-purple-50 border-purple-200'
+                                                    : car.status === UsedCarListingStatus.APPROVED_BY_MANAGER
+                                                        ? 'bg-indigo-50 border-indigo-200'
+                                                        : car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
+                                                            ? 'bg-amber-50 border-amber-200'
+                                                            : car.status === UsedCarListingStatus.INSPECTION_COMPLETED
+                                                                ? 'bg-emerald-50 border-emerald-200'
+                                                                : 'bg-blue-50 border-blue-200'
                                                     }`}>
                                                     <UserCheck
                                                         className={`h-3 w-3 flex-shrink-0 ${car.status === UsedCarListingStatus.APPROVED_BY_ADMIN
-                                                                ? 'text-purple-600'
-                                                                : car.status === UsedCarListingStatus.APPROVED_BY_MANAGER
-                                                                    ? 'text-indigo-600'
-                                                                    : car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
-                                                                        ? 'text-amber-600'
-                                                                        : car.status === UsedCarListingStatus.INSPECTION_COMPLETED
-                                                            ? 'text-emerald-600'
-                                                            : 'text-blue-600'
+                                                            ? 'text-purple-600'
+                                                            : car.status === UsedCarListingStatus.APPROVED_BY_MANAGER
+                                                                ? 'text-indigo-600'
+                                                                : car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
+                                                                    ? 'text-amber-600'
+                                                                    : car.status === UsedCarListingStatus.INSPECTION_COMPLETED
+                                                                        ? 'text-emerald-600'
+                                                                        : 'text-blue-600'
                                                             }`}
                                                     />
                                                     <span className={`text-[11px] font-medium ${car.status === UsedCarListingStatus.APPROVED_BY_ADMIN
-                                                            ? 'text-purple-700'
-                                                            : car.status === UsedCarListingStatus.APPROVED_BY_MANAGER
-                                                                ? 'text-indigo-700'
-                                                                : car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
-                                                                    ? 'text-amber-700'
-                                                                    : car.status === UsedCarListingStatus.INSPECTION_COMPLETED
-                                                        ? 'text-emerald-700'
-                                                        : 'text-blue-700'
+                                                        ? 'text-purple-700'
+                                                        : car.status === UsedCarListingStatus.APPROVED_BY_MANAGER
+                                                            ? 'text-indigo-700'
+                                                            : car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF
+                                                                ? 'text-amber-700'
+                                                                : car.status === UsedCarListingStatus.INSPECTION_COMPLETED
+                                                                    ? 'text-emerald-700'
+                                                                    : 'text-blue-700'
                                                         }`}>
                                                         {car.status === UsedCarListingStatus.APPROVED_BY_ADMIN ||
                                                             car.status === UsedCarListingStatus.APPROVED_BY_MANAGER ||
@@ -449,7 +437,7 @@ const CarListComponent = () => {
 
                                         {/* Buttons based on status */}
                                         {car.status === UsedCarListingStatus.INSPECTOR_ASSIGNED && (car as any).inspector && (
-                                            <div className="px-4 pb-4 flex gap-2">
+                                            <div className="flex gap-2">
                                                 <Button
                                                     onClick={() => handleAssignClick(car)}
                                                     variant="primary"
@@ -471,7 +459,7 @@ const CarListComponent = () => {
 
                                         {/* Assign Inspector and Assign to Self */}
                                         {car.status === UsedCarListingStatus.PENDING && !(car as any).inspector && (
-                                            <div className="px-4 pb-4 flex gap-2">
+                                            <div className="flex gap-2">
                                                 <Button
                                                     onClick={() => handleAssignClick(car)}
                                                     variant="primary"
@@ -493,7 +481,7 @@ const CarListComponent = () => {
 
                                         {/* View Inspection Report */}
                                         {car.status === UsedCarListingStatus.INSPECTION_COMPLETED && (
-                                            <div className="px-4 pt-2 pb-4">
+                                            <div className="pb-4">
                                                 <Button
                                                     onClick={() => setSelectedCarId(car.id)}
                                                     variant="primary"
@@ -507,7 +495,7 @@ const CarListComponent = () => {
 
                                         {/* Approve Inspection Report */}
                                         {car.status === UsedCarListingStatus.DETAILS_UPDATED_BY_STAFF && (
-                                            <div className="px-4 pt-2 pb-4">
+                                            <div className="">
                                                 <Button
                                                     onClick={() => setSelectedCarId(car.id)}
                                                     variant="primary"
@@ -521,7 +509,7 @@ const CarListComponent = () => {
 
                                         {/* View Approved Report */}
                                         {car.status === UsedCarListingStatus.APPROVED_BY_MANAGER && (
-                                            <div className="px-4 pt-2 pb-4">
+                                            <div className="">
                                                 <Button
                                                     onClick={() => setSelectedCarId(car.id)}
                                                     variant="primary"
@@ -535,7 +523,7 @@ const CarListComponent = () => {
 
                                         {/* View Final Report */}
                                         {car.status === UsedCarListingStatus.APPROVED_BY_ADMIN && (
-                                            <div className="px-4 pt-2 pb-4">
+                                            <div className="">
                                                 <Button
                                                     onClick={() => setSelectedCarId(car.id)}
                                                     variant="primary"
@@ -550,16 +538,15 @@ const CarListComponent = () => {
                                 )
                             })}
                         </div>
-                        {hasMore && (
-                            <div ref={loadMoreRef} className="mt-4 h-8 flex items-center justify-center text-xs text-gray-500">
-                                {isLoadingMore ? (
-                                    <div className="flex items-center gap-2">
-                                        <LoadingSpinner size="sm" />
-                                        <span>Loading more cars…</span>
-                                    </div>
-                                ) : 'Scroll to load more cars'}
-                            </div>
-                        )}
+                        
+                        {/* Pagination */}
+                        <div className="mt-6 mb-4">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={handlePageChange}
+                            />
+                        </div>
                     </>
                 )}
             </div>
@@ -583,7 +570,7 @@ const CarListComponent = () => {
                 onClose={() => setSelectedCarId(null)}
                 carId={selectedCarId}
             />
-            
+
         </div>
     );
 };

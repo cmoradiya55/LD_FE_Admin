@@ -96,7 +96,7 @@ export const patchToggleInspectorStatus = (inspectorId) => patchRequest(`/manage
 
 
 // Car List APIs
-export const getCarListForManager = (page, limit) => getRequest(`/manager/used-car?page=${page}&limit=${limit}`);
+export const getCarListForManager = (page, limit, status) => getRequest(`/manager/used-car?page=${page}&limit=${limit}${status ? `&status=${status}` : ''}`);
 export const assignToInspectorOrSelf = (payload) => postRequest(`/manager/used-car/assign-inspector`, payload);
 export const getInspectionReport = (id) => getRequest(`/manager/used-car/${id}/inspection-report`);
 export const patchApproveInspectedCar = (id, payload) => patchRequest(`/manager/used-car/${id}/approve`, payload);
