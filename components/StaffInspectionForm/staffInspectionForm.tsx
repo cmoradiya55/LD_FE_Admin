@@ -117,10 +117,11 @@ const StaffInspectionForm = () => {
     });
 
     const ownerOptions = [
-        { value: OwnerType.FIRST, label: "First Owner" },
-        { value: OwnerType.SECOND, label: "Second Owner" },
-        { value: OwnerType.THIRD, label: "Third Owner" },
-        { value: OwnerType.FOURTH, label: "Fourth Owner" },
+        { value: OwnerType.FIRST, label: "1st Owner" },
+        { value: OwnerType.SECOND, label: "2nd Owner" },
+        { value: OwnerType.THIRD, label: "3rd Owner" },
+        { value: OwnerType.FOURTH, label: "4th Owner" },
+        { value: OwnerType.FIFTH, label: "5th Owner" },
     ];
 
     const hasChallan = watch("has_challan");

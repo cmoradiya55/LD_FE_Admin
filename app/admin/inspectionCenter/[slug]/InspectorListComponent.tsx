@@ -57,6 +57,8 @@ const InspectorListComponent: React.FC<InspectorListComponentProps> = ({
     managerId,
 }) => {
     const router = useRouter();
+    console.log("managerId", managerId);
+    
 
     const { data: inspectorsResponse, isLoading, isError, refetch: refetchInspectors } = useQuery({
         queryKey: ['GET_INSPECTORS_BY_MANAGER', managerId],

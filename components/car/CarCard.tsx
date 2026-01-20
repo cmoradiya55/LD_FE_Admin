@@ -63,7 +63,7 @@ const getStatusBadgeConfig = (status: UsedCarListingStatus): { bgColor: string; 
         case UsedCarListingStatus.CANCELLED:
             return { bgColor: 'bg-gray-500', icon: <Ban className="h-3 w-3" />, label: 'Cancelled' };
         default:
-            return { bgColor: 'bg-gray-500', icon: <Clock className="h-3 w-3" />, label: 'Unknown' };
+            return { bgColor: 'bg-gray-500', icon: <Clock className="h-3 w-3" />, label: 'Unknown'};
     }
 };
 

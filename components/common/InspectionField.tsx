@@ -20,7 +20,8 @@ interface InspectionFieldProps {
     onImageUpload?: (url: string) => void;
     setValue?: UseFormSetValue<any>;
     type?: number; 
-    sub_type?: number; 
+    sub_type?: number;
+    isRequired?: boolean;
 }
 
 interface DamageOption {
@@ -130,6 +131,7 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
     setValue: setValueProp,
     type,
     sub_type,
+    isRequired = false,
 }) => {
     const damageFieldValue = useWatch({
         control,
@@ -723,10 +725,12 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
                         <div className="p-1 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md shadow-blue-500/20">
                             <Sparkles className="h-2.5 w-2.5 text-white" />
                         </div>
-                        <h3 className="text-[13px] font-semibold text-primary-700">
-                            {label}
-                            {isImageMandatory && (
-                                <span className="ml-1 text-red-500">*</span>
+                        <h3 className="text-[13px] font-semibold text-primary-700 flex items-center gap-1">
+                            <span>{label}</span>
+                            {isRequired && (
+                                <span className="inline-flex items-center rounded font-bold text-red-500 uppercase tracking-wide">
+                                    *
+                                </span>
                             )}
                         </h3>
                     </div>
@@ -925,9 +929,6 @@ const InspectionField: React.FC<InspectionFieldProps> = ({
                                                 setSelectedOptions({});
                                                 setOrvmSubOptions({});
                                                 setOrvmType("");
-                                                if (fieldType === "electrical") {
-                                                    setElectricalType("");
-                                                }
                                                 setRemarks("");
                                             }
                                         }}

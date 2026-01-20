@@ -681,6 +681,7 @@ const InspectionCenterComponent = () => {
                                     <button
                                         type="button"
                                         onClick={() => {
+                                            console.log("selected Center", selectedCenter);
                                             if (selectedCenter?.manager) {
                                                 router.push(
                                                     `/admin/inspectionCenter/${selectedCenter.manager.id}`,

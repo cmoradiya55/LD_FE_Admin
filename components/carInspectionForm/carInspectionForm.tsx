@@ -339,6 +339,7 @@ const CarInspectionForm = () => {
   const [rcImage, setRcImage] = useState<string>("");
   const [insuranceImage, setInsuranceImage] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<Array<{ type: number; subtype: number; name: string }>>([]);
+  const [section1Errors, setSection1Errors] = useState<{ [key: string]: string }>({});
 
   const { control, watch, handleSubmit, setValue, formState: { errors } } = useForm<InspectionFormData>({
     defaultValues: {
@@ -357,7 +358,6 @@ const CarInspectionForm = () => {
       const response = await getInspectionDetails(carId);
       if (response?.code === 200 && response?.data) {
         const data = response.data;
-        // Transform isDamage from boolean to "yes"/"no" in inspectionImages
         if (data.inspectionImages && Array.isArray(data.inspectionImages)) {
           data.inspectionImages = data.inspectionImages.map((imageData: any) => {
             if (imageData.isDamage !== undefined || imageData.is_damage !== undefined) {
@@ -514,8 +514,23 @@ const CarInspectionForm = () => {
         const hasImage = fieldData?.image && fieldData.image.trim() !== "";
         const hasDamageValue = fieldData?.damage !== undefined && fieldData.damage !== "";
 
-        if (!fieldData || (!isInteriorOrSeat && !hasDamageValue && !hasRemarks && !hasImage)) {
+        // Only send data if:
+        // 1. For Interior/Seats: has remarks or image (damage not required)
+        // 2. For other types: has image (API requires image_url even for draft saves)
+        if (!fieldData) {
           return;
+        }
+        
+        if (isInteriorOrSeat) {
+          // For interior/seats, send if there's any data
+          if (!hasRemarks && !hasImage) {
+            return;
+          }
+        } else {
+          // For other types, only send if image is present to avoid API validation errors
+          if (!hasImage) {
+            return;
+          }
         }
 
         const payload: any = {
@@ -585,12 +600,45 @@ const CarInspectionForm = () => {
       const response = await saveInspectionProcess(carId, payload);
 
       if (response?.code === 200 || response?.success) {
+        setSection1Errors({});
         return true;
       }
-      toast.error(response?.message || "Operation failed");
+      
+      // Parse error response for field-level errors
+      const errorData = response?.response?.data || response;
+      const fieldErrors: { [key: string]: string } = {};
+      
+      if (errorData?.errors && Array.isArray(errorData.errors)) {
+        errorData.errors.forEach((err: any) => {
+          if (err.field) {
+            fieldErrors[err.field] = err.message || "Invalid value";
+          }
+        });
+      }
+      
+      if (Object.keys(fieldErrors).length > 0) {
+        setSection1Errors(fieldErrors);
+      }
+      
+      toast.error(errorData?.message || response?.message || "Operation failed");
       return false;
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || "An error occurred");
+      const errorData = error?.response?.data;
+      const fieldErrors: { [key: string]: string } = {};
+      
+      if (errorData?.errors && Array.isArray(errorData.errors)) {
+        errorData.errors.forEach((err: any) => {
+          if (err.field) {
+            fieldErrors[err.field] = err.message || "Invalid value";
+          }
+        });
+      }
+      
+      if (Object.keys(fieldErrors).length > 0) {
+        setSection1Errors(fieldErrors);
+      }
+      
+      toast.error(errorData?.message || error?.message || "An error occurred");
       return false;
     }
   };
@@ -602,8 +650,8 @@ const CarInspectionForm = () => {
       const success = await handleSave(formValues);
       if (success) {
         toast.success("Draft saved successfully");
+        setCurrentSection((prev) => prev + 1);
       }
-      setCurrentSection((prev) => prev + 1);
     } finally {
       setIsSaving(false);
     }
@@ -844,58 +892,82 @@ const CarInspectionForm = () => {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
-                  <TextInput
-                    name="registration_number"
-                    control={control}
-                    label="Registration Number"
-                    placeholder="GJ-05-HV-1234"
-                    required
-                    error={errors.registration_number}
-                    rules={{
-                      required: "Registration number is required",
-                      pattern: {
-                        value: /^[A-Z]{2}-[0-9]{2}-[A-Z]{2}-[0-9]{4}$/i,
-                        message: "Please enter a valid registration number (e.g., GJ-05-HV-1234)"
-                      }
-                    }}
-                    onChange={(value) => {
-                      const cleaned = value.replace(/[^A-Z0-9]/gi, '').toUpperCase();
-                      const letters = cleaned.match(/[A-Z]/g) || [];
-                      const digits = cleaned.match(/[0-9]/g) || [];
+                  <div>
+                    <TextInput
+                      name="registration_number"
+                      control={control}
+                      label="Registration Number"
+                      placeholder="GJ-05-HV-1234"
+                      required
+                      error={errors.registration_number}
+                      rules={{
+                        required: "Registration number is required",
+                        pattern: {
+                          value: /^[A-Z]{2}-[0-9]{2}-[A-Z]{2}-[0-9]{4}$/i,
+                          message: "Please enter a valid registration number (e.g., GJ-05-HV-1234)"
+                        }
+                      }}
+                      onChange={(value) => {
+                        const cleaned = value.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                        const letters = cleaned.match(/[A-Z]/g) || [];
+                        const digits = cleaned.match(/[0-9]/g) || [];
 
-                      const parts = [
-                        letters.slice(0, 2).join(''),
-                        digits.slice(0, 2).join(''),
-                        letters.slice(2, 4).join(''),
-                        digits.slice(2, 6).join('')
-                      ];
+                        const parts = [
+                          letters.slice(0, 2).join(''),
+                          digits.slice(0, 2).join(''),
+                          letters.slice(2, 4).join(''),
+                          digits.slice(2, 6).join('')
+                        ];
 
-                      let formatted = parts[0];
-                      if (parts[1]) formatted += '-' + parts[1];
-                      if (parts[2]) formatted += '-' + parts[2];
-                      if (parts[3]) formatted += '-' + parts[3];
+                        let formatted = parts[0];
+                        if (parts[1]) formatted += '-' + parts[1];
+                        if (parts[2]) formatted += '-' + parts[2];
+                        if (parts[3]) formatted += '-' + parts[3];
 
-                      setValue("registration_number", formatted);
-                    }}
-                  />
-                  <TextInput
-                    name="registartion_year"
-                    control={control}
-                    label="Registration Year"
-                    type="number"
-                    placeholder="e.g., 2021"
-                    required
-                    error={errors.registartion_year}
-                  />
-                  <TextInput
-                    name="km_driven"
-                    control={control}
-                    label="KM Driven"
-                    type="number"
-                    placeholder="e.g., 95000"
-                    required
-                    error={errors.km_driven}
-                  />
+                        setValue("registration_number", formatted);
+                      }}
+                    />
+                    {section1Errors.registration_number && (
+                      <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="font-medium">{section1Errors.registration_number}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <TextInput
+                      name="registartion_year"
+                      control={control}
+                      label="Registration Year"
+                      type="number"
+                      placeholder="e.g., 2021"
+                      required
+                      error={errors.registartion_year}
+                    />
+                    {section1Errors.registartion_year && (
+                      <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="font-medium">{section1Errors.registartion_year}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <TextInput
+                      name="km_driven"
+                      control={control}
+                      label="KM Driven"
+                      type="number"
+                      placeholder="e.g., 95000"
+                      required
+                      error={errors.km_driven}
+                    />
+                    {section1Errors.km_driven && (
+                      <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="font-medium">{section1Errors.km_driven}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* RC Image Upload */}
@@ -913,6 +985,12 @@ const CarInspectionForm = () => {
                     }}
                     onUploadError={() => toast.error("Failed to upload RC image")}
                   />
+                  {section1Errors.rc_image && (
+                    <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="font-medium">{section1Errors.rc_image}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Insurance Image Upload */}
@@ -930,6 +1008,12 @@ const CarInspectionForm = () => {
                     }}
                     onUploadError={() => toast.error("Failed to upload Insurance image")}
                   />
+                  {section1Errors.insurance_image && (
+                    <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="font-medium">{section1Errors.insurance_image}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -961,6 +1045,7 @@ const CarInspectionForm = () => {
                           type={field.type}
                           sub_type={field.sub_type}
                           error={errors[field.name as keyof typeof errors] as FieldError}
+                          isRequired={field.isRequired}
                         />
                         {fieldValidationError && (
                           <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
@@ -1002,6 +1087,7 @@ const CarInspectionForm = () => {
                           type={field.type}
                           sub_type={field.sub_type}
                           error={errors[field.name as keyof typeof errors] as FieldError}
+                          isRequired={field.isRequired}
                         />
                         {fieldValidationError && (
                           <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
@@ -1045,6 +1131,7 @@ const CarInspectionForm = () => {
                             type={field.type}
                             sub_type={field.sub_type}
                             error={errors[field.name as keyof typeof errors] as FieldError}
+                            isRequired={field.isRequired}
                           />
                           {fieldValidationError && (
                             <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
@@ -1083,6 +1170,7 @@ const CarInspectionForm = () => {
                             type={field.type}
                             sub_type={field.sub_type}
                             error={errors[field.name as keyof typeof errors] as FieldError}
+                            isRequired={field.isRequired}
                           />
                           {fieldValidationError && (
                             <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
@@ -1121,6 +1209,7 @@ const CarInspectionForm = () => {
                             type={field.type}
                             sub_type={field.sub_type}
                             error={errors[field.name as keyof typeof errors] as FieldError}
+                            isRequired={field.isRequired}
                           />
                           {fieldValidationError && (
                             <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
@@ -1159,6 +1248,7 @@ const CarInspectionForm = () => {
                             type={field.type}
                             sub_type={field.sub_type}
                             error={errors[field.name as keyof typeof errors] as FieldError}
+                            isRequired={field.isRequired}
                           />
                           {fieldValidationError && (
                             <div className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
@@ -1195,6 +1285,7 @@ const CarInspectionForm = () => {
                         type={field.type}
                         sub_type={field.sub_type}
                         error={errors[field.name as keyof typeof errors] as FieldError}
+                        isRequired={field.isRequired}
                       />
                     ))}
                   </div>
