@@ -80,14 +80,12 @@ const CarListComponent = () => {
         staleTime: 0,
     });
 
-    // Fetch car details for staff inspection report (includes inspection data if available)
     const { data: carDetailsData, isLoading: isLoadingCarDetails } = useQuery({
         queryKey: ['GET_CAR_DETAILS', selectedCarId],
         queryFn: async () => {
             if (!selectedCarId) return null;
             const response = await getCarDetails(selectedCarId);
             if (response?.code === 200 && response?.data) {
-                // Response is an array, get first item
                 return Array.isArray(response.data) ? response.data[0] : response.data;
             }
             return null;
@@ -97,8 +95,6 @@ const CarListComponent = () => {
         refetchOnWindowFocus: false,
     });
 
-    // Create formValues from carDetailsData if it contains inspection data
-    // Otherwise return empty values (inspection summary won't show)
     const formValues = useMemo(() => {
         // If carDetailsData has inspection images/data, use it
         // Otherwise return empty values
@@ -177,7 +173,6 @@ const CarListComponent = () => {
     const allCars = carsResponse || [];
     const filteredCars = allCars;
 
-    // Calculate stats
     const stats = {
         total: filteredCars.length,
         available: filteredCars.length,
@@ -216,14 +211,28 @@ const CarListComponent = () => {
         },
     ];
 
-    const handleInspectionReport = (carId: string) => {
-        router.push(`/staff/staffInspection?carId=${carId}`);
+    const handleCarAction = async (carId: string) => {
+        try {
+            const response = await getCarDetails(carId);
+            const carData = Array.isArray(response?.data) ? response.data[0] : response?.data;
+            const status = carData?.status;
+
+            if (status === 400) {
+                router.push(`/staff/staffInspection?carId=${carId}`);
+            } else if (status === 500) {
+                setSelectedCarId(carId);
+                setIsDialogOpen(true);
+            } else {
+                router.push(`/staff/staffInspection?carId=${carId}`);
+            }
+        } catch (error) {
+            console.error("Error fetching car details:", error);
+            router.push(`/staff/staffInspection?carId=${carId}`);
+        }
     };
 
-    const handleViewReport = (carId: string) => {
-        setSelectedCarId(carId);
-        setIsDialogOpen(true);
-    };
+    const handleInspectionReport = (carId: string) => handleCarAction(carId);
+    const handleViewReport = (carId: string) => handleCarAction(carId);
 
     const handleCloseDialog = () => {
         setIsDialogOpen(false);
