@@ -94,7 +94,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [authState.isLoading, authState.isAuthenticated, authState.user?.roleId, pathname, router]);
 
   const handleProfileClick = () => {
-    router.push('/profile');
+    const roleId = authState.user?.roleId;
+    
+    if (roleId === 1) {
+      router.push('/admin/profile');
+    } else if (roleId === 2) {
+      router.push('/manager/profile');
+    } else if (roleId === 3) {
+      router.push('/inspector/profile');
+    } else if (roleId === 4) {
+      router.push('/staff/profile');
+    }
   };
 
   const handlePageChange = (page: string) => {

@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/common';
 import { Button } from '@/components/Button/Button';
-import { IndianRupee, Save, XCircle } from 'lucide-react';
+import { IndianRupee, Save, XCircle, X } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 interface InspectionReportDialogProps {
@@ -224,40 +224,47 @@ const InspectionReportDialog = ({ isOpen, onClose, carId, carDetailsData }: Insp
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto p-0 thin-scrollbar">
+        <Dialog open={isOpen}>
+            <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-6xl xl:max-w-7xl max-h-[95vh] overflow-y-auto overflow-x-hidden p-0 thin-scrollbar [&>button]:hidden">
                 {(isLoading || (isAdmin && !carDetailsData)) ? (
                     <div className="flex items-center justify-center py-12">
                         <LoadingSpinner size="lg" />
                     </div>
                 ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6 w-full overflow-x-hidden">
                         {/* Header */}
-                        <div className="relative overflow-hidden bg-gradient-to-br from-primary-700 via-primary-600 to-primary-700 px-6 pt-6 pb-4 pr-16">
+                        <div className="relative overflow-hidden bg-gradient-to-br from-primary-700 via-primary-600 to-primary-700 px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
                             <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
                             <div className="relative z-10">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1">
-                                        <h2 className="text-2xl font-bold text-white mb-2">Inspection Report</h2>
+                                <div className="flex items-start justify-between gap-2 sm:gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <h2 className="text-base sm:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2">Inspection Report</h2>
                                     </div>
+                                    <button
+                                        onClick={onClose}
+                                        className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors duration-200"
+                                        aria-label="Close"
+                                    >
+                                        <X className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="px-6 pb-6 space-y-6">
+                        <div className="px-3 sm:px-4 lg:px-6 pb-4 sm:pb-6 space-y-4 sm:space-y-6 w-full overflow-x-hidden">
                             {/* Inspector's Inspection Report */}
-                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                                <div className="bg-gradient-to-r from-primary-50 to-blue-50 px-4 py-2.5 border-b border-gray-200">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-gradient-to-br from-primary-500 to-blue-600 rounded-lg">
-                                            <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="bg-white rounded-lg sm:rounded-xl border border-gray-200 shadow-sm overflow-hidden w-full">
+                                <div className="bg-gradient-to-r from-primary-50 to-blue-50 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-gray-200">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                        <div className="p-1 sm:p-1.5 bg-gradient-to-br from-primary-500 to-blue-600 rounded-md sm:rounded-lg">
+                                            <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         </div>
-                                        <h3 className="text-base font-bold text-gray-900">Inspector's Inspection Report</h3>
+                                        <h3 className="text-sm sm:text-base font-bold text-gray-900">Inspector's Inspection Report</h3>
                                     </div>
                                 </div>
-                                <div className="p-4">
+                                <div className="p-3 sm:p-4 overflow-x-hidden">
                                     <InspectionSummary
                                         formValues={formValues}
                                         allFields={{
@@ -273,7 +280,7 @@ const InspectionReportDialog = ({ isOpen, onClose, carId, carDetailsData }: Insp
                             </div>
 
                             {/* Staff Inspection Report */}
-                            <div>
+                            <div className="w-full overflow-x-hidden">
                                 <StaffInspectionReport
                                     isLoading={isAdmin ? false : isLoading}
                                     inspectionData={isAdmin ? carDetailsData : (inspectionData || carDetailsData)}
@@ -285,20 +292,20 @@ const InspectionReportDialog = ({ isOpen, onClose, carId, carDetailsData }: Insp
 
 
                             {/* Price Details */}
-                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div className="bg-white rounded-lg sm:rounded-xl border border-gray-200 shadow-sm overflow-hidden w-full">
 
                                 {/* Price Details Header */}
-                                <div className="bg-gradient-to-r from-primary-50 to-blue-50 px-4 py-2.5 border-b border-gray-200">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-gradient-to-br from-primary-500 to-blue-600 rounded-lg">
-                                            <IndianRupee className="h-4 w-4 text-white" />
+                                <div className="bg-gradient-to-r from-primary-50 to-blue-50 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-gray-200">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                        <div className="p-1 sm:p-1.5 bg-gradient-to-br from-primary-500 to-blue-600 rounded-md sm:rounded-lg">
+                                            <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                                         </div>
-                                        <h3 className="text-base font-bold text-gray-900">Price Details</h3>
+                                        <h3 className="text-sm sm:text-base font-bold text-gray-900">Price Details</h3>
                                     </div>
                                 </div>
 
                                 {/* Price Details Content */}
-                                <div className="p-4">
+                                <div className="p-3 sm:p-4 overflow-x-hidden">
                                     {(() => {
                                         const currentStatus = isAdmin
                                             ? carDetailsData?.status
@@ -461,17 +468,37 @@ const InspectionReportDialog = ({ isOpen, onClose, carId, carDetailsData }: Insp
                                             // Admin: status 700/800 - Show price from detail API (read-only)
                                             if (currentStatus === UsedCarListingStatus.APPROVED_BY_ADMIN || currentStatus === UsedCarListingStatus.LISTED) {
                                                 const finalPrice = carDetailsData?.finalPrice;
+                                                const customerExpectedPrice = carDetailsData?.customerExpectedPrice;
                                                 return (
-                                                    <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                            Final Price
-                                                        </label>
-                                                        <div className="p-4 rounded-lg bg-primary-50 border-2 border-primary-200">
-                                                            <p className="text-2xl font-bold text-primary-700">
-                                                                ₹{finalPrice != null && finalPrice !== undefined
-                                                                    ? finalPrice.toLocaleString('en-IN')
-                                                                    : 'N/A'} /-
-                                                            </p>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        {/* Final Price Card */}
+                                                        <div className="relative overflow-hidden rounded-lg border-2 border-primary-200 bg-gradient-to-br from-primary-50 to-primary-100/50">
+                                                            <div className="absolute top-0 right-0 w-20 h-20 bg-primary-200/30 rounded-full -mr-10 -mt-10"></div>
+                                                            <div className="relative p-2">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <h4 className="text-xs sm:text-sm font-semibold text-gray-700">Final Price</h4>
+                                                                    <p className="text-lg sm:text-xl font-bold text-primary-700">
+                                                                        ₹{finalPrice != null && finalPrice !== undefined
+                                                                            ? finalPrice.toLocaleString('en-IN')
+                                                                            : 'N/A'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Customer Expected Price Card */}
+                                                        <div className="relative overflow-hidden rounded-lg border-2 border-green-600/50 bg-gradient-to-br from-green-50 to-green-100/50">
+                                                            <div className="absolute top-0 right-0 w-20 h-20 bg-green-300/30 rounded-full -mr-10 -mt-10"></div>
+                                                            <div className="relative p-2">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <h4 className="text-xs sm:text-sm font-semibold text-gray-700">Customer Expected Price</h4>
+                                                                    <p className="text-lg sm:text-xl font-bold text-green-700">
+                                                                        ₹{customerExpectedPrice != null && customerExpectedPrice !== undefined
+                                                                            ? customerExpectedPrice.toLocaleString('en-IN')
+                                                                            : 'N/A'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );

@@ -106,6 +106,8 @@ const CarListComponent = () => {
         },
         retry: false,
         refetchOnWindowFocus: false,
+        gcTime: 0,
+        staleTime: 0,
     });
 
     const cars = carsResponse || [];
@@ -182,7 +184,7 @@ const CarListComponent = () => {
             km_driven: inspectionData.km_driven || 0,
             rc_image: inspectionData.rc_image || "",
             insurance_image: inspectionData.insurance_image || "",
-            
+
             // Car details
             car_brand: inspectionData.car?.brand || "",
             car_model: inspectionData.car?.model || "",
@@ -190,7 +192,7 @@ const CarListComponent = () => {
             car_modelYear: inspectionData.car?.modelYear || "",
             car_fuelType: inspectionData.car?.fuelTypeLabel || "",
             car_ownerType: inspectionData.car?.ownerType || "",
-            
+
             // Customer details
             customer_id: inspectionData.customer?.id || "",
             customer_fullName: inspectionData.customer?.fullName || "",
@@ -200,7 +202,7 @@ const CarListComponent = () => {
             customer_areaName: inspectionData.customer?.areaName || "",
             customer_city: inspectionData.customer?.city || "",
             customer_state: inspectionData.customer?.state || "",
-            
+
             // Inspection status
             inspection_id: inspectionData.id || "",
             inspection_status: inspectionData.status || "",
@@ -228,7 +230,7 @@ const CarListComponent = () => {
                     if (matchingField.fieldType === "tyre" && imageData.tread_depth !== undefined) {
                         fieldValue.treadDepth = imageData.tread_depth.toString();
                     }
-                    
+
                     // Handle ORVM fields
                     if (matchingField.fieldType === "orvm") {
                         if (imageData.orvm_type) fieldValue.orvm_type = imageData.orvm_type;
@@ -239,12 +241,12 @@ const CarListComponent = () => {
                             fieldValue.mirror_adjust_motor = imageData.mirror_adjust_motor ? "yes" : "no";
                         }
                     }
-                    
+
                     // Handle electrical fields with is_power
                     if (matchingField.fieldType === "electrical" && imageData.is_power !== undefined) {
                         fieldValue.electrical_type = imageData.is_power ? "electric" : "manual";
                     }
-                    
+
                     values[matchingField.name] = fieldValue;
                 }
             });
@@ -394,9 +396,9 @@ const CarListComponent = () => {
                                 car.status === UsedCarListingStatus.INSPECTION_STARTED;
 
                             return (
-                                <div key={car.id} className="group relative overflow-hidden bg-white border border-slate-200 shadow-sm transition-all duration-500 hover:scale-[1.02] rounded-xl">
+                                <div key={car.id} className="group relative overflow-hidden bg-white transition-all duration-500 hover:scale-[1.02] rounded-xl space-y-3">
                                     {/* Status Badge */}
-                                    <div className="absolute top-3 right-3 z-10">
+                                    <div className="absolute top-5 right-2 z-10">
                                         {isCompleted ? (
                                             <div className="flex items-center gap-1.5 bg-green-500 text-white px-2 py-1 rounded-full shadow-lg">
                                                 <CheckCircle2 className="h-3 w-3" />
@@ -410,13 +412,15 @@ const CarListComponent = () => {
                                         ) : null}
                                     </div>
 
-                                    <CarCard
-                                        car={car}
-                                        showStatusBadge={false}
-                                    />
+                                    <div className="border border-slate-200 shadow-sm rounded-xl">
+                                        <CarCard
+                                            car={car}
+                                            showStatusBadge={false}
+                                        />
+                                    </div>
 
                                     {isPending && (
-                                        <div className="px-2 pb-2">
+                                        <div className="pb-2">
                                             <Button
                                                 variant="primary"
                                                 className="w-full text-[11px]"
@@ -439,9 +443,9 @@ const CarListComponent = () => {
                                         </div>
                                     )}
                                     {isCompleted && (
-                                        <div className="px-2 pb-2">
+                                        <div className="pb-2">
                                             <Button
-                                                variant="primary"
+                                                variant="outline"
                                                 className="w-full text-[11px]"
                                                 size="sm"
                                                 onClick={() => {

@@ -117,7 +117,7 @@ const CarCard: React.FC<CarCardProps> = ({
                         {showFavorite && (
                             <button
                                 onClick={handleFavoriteClick}
-                                className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/95 backdrop-blur-sm shadow-lg transition-all duration-200 hover:bg-white hover:scale-110 active:scale-95"
+                                className="absolute top-2 right-2 sm:top-3 sm:right-3 z-30 flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/95 backdrop-blur-sm shadow-lg transition-all duration-200 hover:bg-white hover:scale-110 active:scale-95"
                                 aria-label="Add to favorites"
                             >
                                 <Heart
@@ -130,13 +130,13 @@ const CarCard: React.FC<CarCardProps> = ({
                         )}
 
                         {/* Year Badge */}
-                        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 rounded-full bg-white/95 backdrop-blur-sm px-2 py-1 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold text-gray-900 shadow-lg">
+                        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-30 rounded-full bg-white/95 backdrop-blur-sm px-2 py-1 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold text-gray-900 shadow-lg">
                             {car.year}
                         </div>
 
                         {/* Status Badge (used by Manager lists) */}
                         {showStatusBadge && statusConfig && (
-                            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20">
+                            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-30">
                                 <div className={`flex items-center gap-1.5 ${statusConfig.bgColor} text-white px-2 py-1 rounded-full shadow-lg`}>
                                     {statusConfig.icon}
                                     <span className="text-[11px] font-semibold">{statusConfig.label}</span>

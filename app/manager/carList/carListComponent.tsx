@@ -133,6 +133,8 @@ const CarListComponent = () => {
         },
         retry: false,
         refetchOnWindowFocus: false,
+        gcTime: 0,
+        staleTime: 0,
     });
 
     const { data: inspectorsResponse, isLoading: isLoadingInspectors, isError: isInspectorsError, refetch: refetchInspectors } = useQuery({
@@ -153,8 +155,11 @@ const CarListComponent = () => {
             }
             return [];
         },
+        enabled: false, // Disable automatic execution
         retry: false,
         refetchOnWindowFocus: false,
+        gcTime: 0,
+        staleTime: 0,
     });
 
     const managerId = useMemo(() => {
@@ -193,6 +198,7 @@ const CarListComponent = () => {
         setSelectedCar(car);
         setSelectedInspector(null);
         setIsAssignDialogOpen(true);
+        refetchInspectors(); // Trigger the API call when button is clicked
     };
 
     const handleInspectorSelect = (inspector: Inspector) => {
@@ -538,7 +544,7 @@ const CarListComponent = () => {
                                 )
                             })}
                         </div>
-                        
+
                         {/* Pagination */}
                         <div className="mt-6 mb-4">
                             <Pagination
