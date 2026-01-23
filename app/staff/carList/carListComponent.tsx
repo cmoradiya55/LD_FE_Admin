@@ -76,6 +76,8 @@ const CarListComponent = () => {
         },
         retry: false,
         refetchOnWindowFocus: false,
+        gcTime: 0,
+        staleTime: 0,
     });
 
     // Fetch car details for staff inspection report (includes inspection data if available)

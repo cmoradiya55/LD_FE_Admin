@@ -15,7 +15,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Bell,
-  Search,
   Settings,
   User,
   LogOut,
