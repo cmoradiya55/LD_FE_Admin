@@ -620,9 +620,15 @@ const CarInspectionForm = () => {
         setSection1Errors(fieldErrors);
       }
       
-      toast.error(errorData?.message || response?.message || "Operation failed");
+      const errorMessage = errorData?.message || response?.message || "Failed to save inspection";
+      console.error("Save inspection failed:", errorMessage, errorData);
+      toast.error(errorMessage, {
+        duration: 5000,
+        position: "top-right",
+      });
       return false;
     } catch (error: any) {
+      console.error("Save inspection error:", error);
       const errorData = error?.response?.data;
       const fieldErrors: { [key: string]: string } = {};
       
@@ -638,7 +644,11 @@ const CarInspectionForm = () => {
         setSection1Errors(fieldErrors);
       }
       
-      toast.error(errorData?.message || error?.message || "An error occurred");
+      const errorMessage = errorData?.message || error?.message || "An error occurred while saving";
+      toast.error(errorMessage, {
+        duration: 5000,
+        position: "top-right",
+      });
       return false;
     }
   };

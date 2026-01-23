@@ -23,6 +23,8 @@ interface TextInputProps {
   inputClassName?: string;
   rules?: RegisterOptions;
   onChange?: (value: string) => void;
+  min?: string | number;
+  max?: string | number;
 }
 
 const TextInput: React.FC<TextInputProps> = ({
@@ -40,6 +42,8 @@ const TextInput: React.FC<TextInputProps> = ({
   inputClassName = 'px-3 py-2',
   rules,
   onChange,
+  min,
+  max,
 }) => {
   return (
     <div className={hideLabel ? className : `space-y-1.5 ${className}`}>
@@ -81,6 +85,8 @@ const TextInput: React.FC<TextInputProps> = ({
             type={type}
             placeholder={placeholder}
             disabled={disabled}
+            min={min}
+            max={max}
             className={`w-full border rounded-md transition-all duration-200 focus:outline-none focus:ring-2 placeholder:text-gray-400 text-sm text-gray-900 ${
               disabled 
                 ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed' 

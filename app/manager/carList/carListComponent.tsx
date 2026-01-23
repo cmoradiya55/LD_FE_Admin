@@ -63,7 +63,7 @@ export type Inspector = {
     documentStatusName?: string;
 };
 
-type FilterType = 'all' | 'assigned' | 'notAssigned' | 'inspectionPending' | 'inspectionCompleted' | 'detailsUpdated' | 'approvedByManager' | 'approvedByAdmin';
+type FilterType = 'all' | 'assigned' | 'notAssigned' | 'inspectionPending' | 'inspectionCompleted' | 'detailsUpdated' | 'approvedByManager';
 
 const getStatusFromFilter = (filter: FilterType): number | undefined => {
     switch (filter) {
@@ -87,7 +87,6 @@ const getStatusFromFilter = (filter: FilterType): number | undefined => {
 };
 
 const CarListComponent = () => {
-    const router = useRouter();
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [allCars, setAllCars] = useState<(CarData & { inspectorId?: number; status?: number; inspector?: { id: number; name: string; mobileNumber: string; role: number; roleLabel: string } | null })[]>([]);
@@ -236,7 +235,7 @@ const CarListComponent = () => {
             const response = await assignToInspectorOrSelf(payload);
             if (response?.code === 200) {
                 handleCloseDialog();
-                toast.success('Inspector assigned successfully');
+                toast.success(`${selectedInspector.name} assigned to ${selectedCar.name} successfully`);
                 refetchCars();
             } else {
                 console.error('Failed to assign inspector:', response);
@@ -262,7 +261,7 @@ const CarListComponent = () => {
 
             const response = await assignToInspectorOrSelf(payload);
             if (response?.code === 200) {
-                toast.success('Car assigned to self successfully');
+                toast.success(`${car.name} assigned to you successfully`);
                 refetchCars();
                 refetchInspectors();
             } else {
@@ -336,7 +335,7 @@ const CarListComponent = () => {
                         { key: 'inspectionCompleted' as FilterType, label: 'Inspection Completed' },
                         { key: 'detailsUpdated' as FilterType, label: 'Details Updated by Staff' },
                         { key: 'approvedByManager' as FilterType, label: 'Approved (Manager)' },
-                        { key: 'approvedByAdmin' as FilterType, label: 'Approved (Admin)' },
+                        // { key: 'approvedByAdmin' as FilterType, label: 'Approved (Admin)' },
                     ].map((filter) => (
                         <button
                             key={filter.key}
