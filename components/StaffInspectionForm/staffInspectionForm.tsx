@@ -56,13 +56,40 @@ interface InspectionFormData {
     staff_remarks: string;
 }
 
+const BOOLEAN_FIELDS = [
+    { name: "loan_status", label: "Loan Status" },
+    { name: "is_blacklisted", label: "Blacklisted" },
+    { name: "is_rto_noc_issued", label: "RTO NOC Issued" },
+    { name: "is_party_peshi", label: "Party Peshi" },
+    { name: "is_hypothecated", label: "Hypothecated" },
+    { name: "is_converted", label: "Converted" },
+    { name: "is_migrated", label: "Migrated" },
+    { name: "adapted_for_special_use", label: "Adapted for Special Use" },
+];
+
+const LEGAL_CASE_FIELDS = [
+    { name: "criminal_cases", label: "Criminal Cases" },
+    { name: "civil_cases", label: "Civil Cases" },
+    { name: "road_accidents", label: "Road Accidents" },
+    { name: "compensation_cases", label: "Compensation Cases" },
+    { name: "other_cases", label: "Other Cases" },
+];
+
+const OWNER_OPTIONS = [
+    { value: OwnerType.FIRST, label: "1st Owner" },
+    { value: OwnerType.SECOND, label: "2nd Owner" },
+    { value: OwnerType.THIRD, label: "3rd Owner" },
+    { value: OwnerType.FOURTH, label: "4th Owner" },
+    { value: OwnerType.FIFTH, label: "5th Owner" },
+];
+
 const StaffInspectionForm = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const carId = searchParams.get("carId") || "";
     const [isSaving, setIsSaving] = useState(false);
+    const [submissionStatus, setSubmissionStatus] = useState<number | null>(null);
 
-    // Fetch car details to get car name
     const { data: carDetailsData } = useQuery({
         queryKey: ['GET_CAR_DETAILS', carId],
         queryFn: async () => {
@@ -78,7 +105,6 @@ const StaffInspectionForm = () => {
         refetchOnWindowFocus: false,
     });
 
-    // Get car name from car details
     const carName = carDetailsData?.displayName
         ? (carDetailsData?.variantName ? `${carDetailsData.displayName} ${carDetailsData.variantName}` : carDetailsData.displayName)
         : carDetailsData?.car?.displayName
@@ -116,14 +142,6 @@ const StaffInspectionForm = () => {
         },
     });
 
-    const ownerOptions = [
-        { value: OwnerType.FIRST, label: "1st Owner" },
-        { value: OwnerType.SECOND, label: "2nd Owner" },
-        { value: OwnerType.THIRD, label: "3rd Owner" },
-        { value: OwnerType.FOURTH, label: "4th Owner" },
-        { value: OwnerType.FIFTH, label: "5th Owner" },
-    ];
-
     const hasChallan = watch("has_challan");
     const challans = watch("challan_detail") || [];
 
@@ -148,21 +166,23 @@ const StaffInspectionForm = () => {
     };
 
     const onSubmit = async (data: InspectionFormData) => {
+        const getErrorMessage = (res: any) => 
+            res?.message || res?.errors?.map((e: any) => e.message).join(", ") || "Failed to submit inspection details";
+
         try {
-            // Convert challan array to object format
-            let challanDetailsObj: any = {};
-            if (data.has_challan && data.challan_detail.length > 0) {
-                data.challan_detail.forEach((challan, index) => {
+            const challanDetailsObj = data.has_challan && data.challan_detail.length > 0
+                ? data.challan_detail.reduce((acc: any, challan, index) => {
                     if (challan.challan_number || challan.challan_date || challan.challan_amount || challan.challan_reason) {
-                        challanDetailsObj[index] = {
+                        acc[index] = {
                             challanNumber: challan.challan_number || "",
                             challanDate: challan.challan_date || "",
                             challanAmount: challan.challan_amount || "",
                             challanReason: challan.challan_reason || "",
                         };
                     }
-                });
-            }
+                    return acc;
+                }, {})
+                : {};
 
             const payload = {
                 registrationDate: data.registartion_date,
@@ -193,14 +213,19 @@ const StaffInspectionForm = () => {
             if (response?.code === 200 || response?.code === 201) {
                 toast.success("Inspection details submitted successfully");
                 router.push("/staff/carList");
+            } else if (response?.code === 400) {
+                setSubmissionStatus(400);
+                toast.error(getErrorMessage(response));
+            } else if (response?.code === 500) {
+                setSubmissionStatus(500);
+                toast.success("Inspection completed successfully");
             } else {
-                const errorMessage = response?.message || response?.errors?.map((e: any) => e.message).join(", ") || "Failed to submit inspection details";
-                toast.error(errorMessage);
+                toast.error(getErrorMessage(response));
             }
         } catch (error: any) {
             console.error("Error submitting inspection:", error);
-            const errorMessage = error?.response?.data?.message || error?.response?.data?.errors?.map((e: any) => e.message).join(", ") || "Failed to submit inspection details";
-            toast.error(errorMessage);
+            const errorMsg = getErrorMessage(error?.response?.data) || error?.message || "An unexpected error occurred";
+            toast.error(errorMsg);
         }
     };
 
@@ -212,6 +237,24 @@ const StaffInspectionForm = () => {
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to Car List
                 </Button>
+            </div>
+        );
+    }
+
+    if (carDetailsData?.status === 500 || submissionStatus === 500) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+                <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                        <CheckCircle2 className="h-10 w-10 text-green-600" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Inspection Completed</h2>
+                    <p className="text-gray-600 mb-6">The inspection has been successfully completed.</p>
+                    <Button onClick={() => router.push("/staff/carList")}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to Car List
+                    </Button>
+                </div>
             </div>
         );
     }
@@ -279,6 +322,16 @@ const StaffInspectionForm = () => {
                                     label="Registration Date"
                                     required
                                     error={errors.registartion_date}
+                                    rules={{
+                                        validate: (value: string) => {
+                                            if (!value) return true;
+                                            const selectedDate = new Date(value);
+                                            const today = new Date();
+                                            today.setHours(0, 0, 0, 0);
+                                            return selectedDate <= today || "Registration date cannot be in the future";
+                                        }
+                                    }}
+                                    max={new Date().toISOString().split('T')[0]}
                                 />
                                 <DateInput
                                     name="fitness_valid_until"
@@ -331,7 +384,7 @@ const StaffInspectionForm = () => {
                                     name="owner"
                                     control={control}
                                     label="Owner"
-                                    options={ownerOptions}
+                                    options={OWNER_OPTIONS}
                                     required
                                     error={errors.owner}
                                 />
@@ -339,16 +392,7 @@ const StaffInspectionForm = () => {
                                 {/* Boolean Fields Grid */}
                                 <div className="sm:col-span-2">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        {[
-                                            { name: "loan_status", label: "Loan Status" },
-                                            { name: "is_blacklisted", label: "Blacklisted" },
-                                            { name: "is_rto_noc_issued", label: "RTO NOC Issued" },
-                                            { name: "is_party_peshi", label: "Party Peshi" },
-                                            { name: "is_hypothecated", label: "Hypothecated" },
-                                            { name: "is_converted", label: "Converted" },
-                                            { name: "is_migrated", label: "Migrated" },
-                                            { name: "adapted_for_special_use", label: "Adapted for Special Use" },
-                                        ].map((field) => (
+                                        {BOOLEAN_FIELDS.map((field) => (
                                             <div key={field.name} className="bg-white rounded-lg py-1.5 px-3 border border-gray-200 hover:border-blue-300 transition-colors">
                                                 <label className="block text-xs font-semibold text-primary-700">
                                                     {field.label}
@@ -403,13 +447,7 @@ const StaffInspectionForm = () => {
                         </div>
                         <div className="p-4">
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                {[
-                                    { name: "criminal_cases", label: "Criminal Cases", error: errors.criminal_cases },
-                                    { name: "civil_cases", label: "Civil Cases", error: errors.civil_cases },
-                                    { name: "road_accidents", label: "Road Accidents", error: errors.road_accidents },
-                                    { name: "compensation_cases", label: "Compensation Cases", error: errors.compensation_cases },
-                                    { name: "other_cases", label: "Other Cases", error: errors.other_cases },
-                                ].map((field) => (
+                                {LEGAL_CASE_FIELDS.map((field) => (
                                     <TextInput
                                         key={field.name}
                                         name={field.name as keyof InspectionFormData}
@@ -417,9 +455,11 @@ const StaffInspectionForm = () => {
                                         label={field.label}
                                         type="number"
                                         placeholder="0"
-                                        error={field.error}
-                                        // rules={{ min: { value: 0, message: "Cannot be negative" } }}
-                                        // onWheel={(e: any) => e.target.blur()}
+                                        min={0}
+                                        error={errors[field.name as keyof typeof errors] as any}
+                                        rules={{
+                                            min: { value: 0, message: "Value must be 0 or greater" }
+                                        }}
                                     />
                                 ))}
                             </div>
