@@ -418,7 +418,8 @@ const StaffInspectionForm = () => {
                                         type="number"
                                         placeholder="0"
                                         error={field.error}
-                                        rules={{ min: { value: 0, message: "Cannot be negative" } }}
+                                        // rules={{ min: { value: 0, message: "Cannot be negative" } }}
+                                        // onWheel={(e: any) => e.target.blur()}
                                     />
                                 ))}
                             </div>

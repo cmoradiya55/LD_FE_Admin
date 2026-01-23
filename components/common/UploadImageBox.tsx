@@ -62,9 +62,7 @@ const UploadImageBox: React.FC<UploadImageBoxProps> = ({
         ]
       };
 
-      console.log("Calling getPreSignedUrlForImage with payload:", payload);
       const response = await getPreSignedUrlForImage(payload);
-      console.log("getPreSignedUrlForImage response:", response);
       
       if (response && response.data && response.data[0]) {
         const presignedUrlData = response.data[0];

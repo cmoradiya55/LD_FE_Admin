@@ -8,13 +8,14 @@ import { Button } from '@/components/Button/Button';
 import SelectInput from '@/components/FormComponent/SelectInput';
 import { OwnerType, UsedCarListingStatus, ExteriorFields, EngineAndTransmissionFields, SteeringSuspensionAndBrakesFields, AirConditioningFields, ElectricalFields, InteriorFields, SeatsFields } from '@/lib/data';
 import { CarData } from '@/lib/CarData';
-import { FileText, Filter, MapPin, UserRound, Clock, CheckCircle2, BadgeCheck, XCircle, AlertCircle, Ban } from 'lucide-react';
+import { FileText, Filter, MapPin, UserRound } from 'lucide-react';
 import { getAllUsedCars, getInspectionCentersData, getUsedCarDetails } from '@/utils/axios/auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/common';
 import ViewAllInspectionReport from '@/components/InspectionReport/ViewAllInspectionReport';
 import InspectionSummary from '@/components/InspectionReport/InspectionSummary';
 import StaffInspectionReport from '@/components/InspectionReport/StaffInspectionReport';
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/Pagination/pagination';
 
 type AdminCar = CarData & {
     status: UsedCarListingStatus;
@@ -92,6 +93,9 @@ const CarComponent = () => {
     const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
     const [selectedCarStatus, setSelectedCarStatus] = useState<UsedCarListingStatus | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const pageSize = 12;
 
     const { control, watch, setValue } = useForm<FilterFormData>({
         defaultValues: {
@@ -250,8 +254,13 @@ const CarComponent = () => {
         return null;
     }, [hasManagerFilter, hasCityFilter, selectedManager, selectedCity, cityToManagersMap, managerNameToIdMap]);
 
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [statusFilter, cityId, managerId]);
+
     const { data: carsResponse, isLoading, isError } = useQuery({
-        queryKey: ['GET_ALL_USED_CARS_ADMIN', statusFilter, cityId, managerId],
+        queryKey: ['GET_ALL_USED_CARS_ADMIN', statusFilter, cityId, managerId, currentPage],
         queryFn: async () => {
             const queryParams = new URLSearchParams();
             if (statusFilter != null) {
@@ -265,8 +274,15 @@ const CarComponent = () => {
             }
 
             const filterQuery = queryParams.toString();
-            const response = await getAllUsedCars(filterQuery || '', 1, 50);
+            const response = await getAllUsedCars(filterQuery || '', currentPage, pageSize);
             if (response?.code === 200 && response?.data) {
+                // Update total pages if pagination info is available
+                if (response.totalPages) {
+                    setTotalPages(response.totalPages);
+                } else if (response.totalCount) {
+                    setTotalPages(Math.ceil(response.totalCount / pageSize));
+                }
+
                 const cars: AdminCar[] = response.data.map((item: any) => ({
                     id: item.id?.toString() || '',
                     name: item.displayName
@@ -303,6 +319,8 @@ const CarComponent = () => {
         },
         retry: false,
         refetchOnWindowFocus: false,
+        gcTime: 0,
+        staleTime: 0,
     });
 
     const filteredCars = useMemo(() => carsResponse?.cars || [], [carsResponse]);
@@ -584,6 +602,101 @@ const CarComponent = () => {
                     </div>
                 )}
             </div>
+
+            {/* Pagination */}
+            {filteredCars.length > 0 && totalPages > 1 && (
+                <div className="flex justify-center mt-6">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                                />
+                            </PaginationItem>
+                            
+                            {(() => {
+                                const pages = [];
+                                const showEllipsisStart = currentPage > 3;
+                                const showEllipsisEnd = currentPage < totalPages - 2;
+
+                                // First page
+                                pages.push(
+                                    <PaginationItem key={1}>
+                                        <PaginationLink
+                                            onClick={() => setCurrentPage(1)}
+                                            isActive={currentPage === 1}
+                                            className="cursor-pointer"
+                                        >
+                                            1
+                                        </PaginationLink>
+                                    </PaginationItem>
+                                );
+
+                                // Ellipsis after first page
+                                if (showEllipsisStart) {
+                                    pages.push(
+                                        <PaginationItem key="ellipsis-start">
+                                            <PaginationEllipsis />
+                                        </PaginationItem>
+                                    );
+                                }
+
+                                // Pages around current page
+                                const start = Math.max(2, currentPage - 1);
+                                const end = Math.min(totalPages - 1, currentPage + 1);
+
+                                for (let i = start; i <= end; i++) {
+                                    pages.push(
+                                        <PaginationItem key={i}>
+                                            <PaginationLink
+                                                onClick={() => setCurrentPage(i)}
+                                                isActive={currentPage === i}
+                                                className="cursor-pointer"
+                                            >
+                                                {i}
+                                            </PaginationLink>
+                                        </PaginationItem>
+                                    );
+                                }
+
+                                // Ellipsis before last page
+                                if (showEllipsisEnd) {
+                                    pages.push(
+                                        <PaginationItem key="ellipsis-end">
+                                            <PaginationEllipsis />
+                                        </PaginationItem>
+                                    );
+                                }
+
+                                // Last page (only if there's more than 1 page)
+                                if (totalPages > 1) {
+                                    pages.push(
+                                        <PaginationItem key={totalPages}>
+                                            <PaginationLink
+                                                onClick={() => setCurrentPage(totalPages)}
+                                                isActive={currentPage === totalPages}
+                                                className="cursor-pointer"
+                                            >
+                                                {totalPages}
+                                            </PaginationLink>
+                                        </PaginationItem>
+                                    );
+                                }
+
+                                return pages;
+                            })()}
+                            
+                            <PaginationItem>
+                                <PaginationNext
+                                    onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
 
             {/* Inspection Report Modal */}
             <Dialog open={isModalOpen} onOpenChange={(open) => {
